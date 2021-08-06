@@ -12,7 +12,7 @@ For example, if the path is user/downloads/plum.sage, you would type: `load('use
     edge such that one vertex has weight -3 and the other has weight -10 can be created as follows: `P = Plumbing({0:-3,1:-10}, [(0,1)])`
 
 4. There are several properties and methods of P. For example, if you want to:
-- get the intersection form of P, type: `P.interesection_form'
+- get the intersection form of P, type: `P.interesection_form`
 - compute the first n levels of zhat for a spinc representative a (using GM notation and represented as a list), type: `P.zhat(a, n)`
 - compute the first n levels of the bigraded root for a spinc representative k (using Nemethi notation and represented as a list), type: `P.bigraded_root(k, n)`
  
