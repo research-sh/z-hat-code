@@ -1,13 +1,26 @@
-"""A module for analyzing plumbed manifolds.
+"""A sage package for analyzing plumbed manifolds.
 
 """
+
 from copy import copy, deepcopy
 from itertools import product, groupby
+
+from sage.graphs.graph_plot import GraphPlot
+
 import math
 import sys
 
-import igraph as ig
+class CustomVertex(tuple):
+    """A class to allow for non-unique vertex labels for a sage Graph() object.
 
+    A vertex will be specified by a tuple v whose last entry is it's label. The
+    subtuple v[:-1] must uniquely specify the vertex.
+    """
+    def __init__(self, v):
+        self.vertex = v
+
+    def __str__(self):
+        return str(self.vertex[-1])
 
 class Plumbing:
     """A class for analyzing plumbed manifolds.
@@ -28,6 +41,8 @@ class Plumbing:
     weight_vector
     degree_vector
     intersection_form
+    intersection_smith_form
+    is_intersection_form_non_singular
     is_tree
     definiteness_type
     bad_vertices
@@ -36,11 +51,6 @@ class Plumbing:
     is_rational
     is_almost_rational
     homology
-
-
-    Methods
-    -------
-
 
     Example
     -------
@@ -60,30 +70,37 @@ class Plumbing:
             self._vertex_count = len(vertices_dict)
             self._edge_count = len(edges)
 
-            self._graph = ig.Graph()
-            self._graph.add_vertices(self._vertex_count)
+            self._sage_formatted_graph_data = {}
+            for i in range(0, self._vertex_count):
+                adjacent_verts = []
+                for x in edges:
+                    if x[0] == i:
+                        adjacent_verts.append('$v_{' + str(x[1]) + '}\hspace{2} '
+                                              + str(vertices_dict[x[1]])
+                                              + '$')
+                    elif x[1] == i:
+                        adjacent_verts.append('$v_{' + str(x[0]) + '}\hspace{2} '
+                                              + str(vertices_dict[x[0]])
+                                              + '$')
+                self._sage_formatted_graph_data['$v_{' + str(i) + '}\hspace{2} '
+                                                + str(vertices_dict[i])
+                                                + '$']\
+                                                = copy(adjacent_verts)
 
-            if self._edge_count != 0:
-                self._graph.add_edges(edges)
+            self._graph = Graph(self._sage_formatted_graph_data)
 
-            self._graph.vs["v_weights"] = list(vertices_dict.values())
-            vertex_labels = [("v" + str(i), list(vertices_dict.values())[i])
-                             for i in range(0, self._vertex_count)]
-            self._graph.vs["label"] = vertex_labels
+            self._plot_options = options = {'vertex_color': 'black',
+                                            'vertex_size': 20,
+                                            'layout': 'tree'}
+
+            self._graph_plot = GraphPlot(self._graph, self._plot_options)
 
             self._weight_vector = Matrix(list(vertices_dict.values())).T
             self._degree_vector = Matrix(self._graph.degree()).T
 
-            self._lay = self._graph.layout_reingold_tilford()
-            self._plot = ig.plot(self._graph, layout=self._lay,
-                                 vertex_size=int(10),
-                                 vertex_label_dist=int(2),
-                                 vertex_label_angle=int(0),margin=int(90),
-                                 vertex_color="black",
-                                 vertex_label_color="black")
-
             self._intersection_form = None
             self._intersection_smith_form = None
+            self._is_intersection_form_non_singular = None
             self._is_tree = None
             self._definiteness_type = None
             self._bad_vertices = None
@@ -95,7 +112,7 @@ class Plumbing:
 
         except:
             print("Error: Plumbing entered incorrectly. Please check"
-                  " formatting.")
+                  " input.")
 
     @property
     def vertex_count(self):
@@ -124,7 +141,7 @@ class Plumbing:
         """Matrix: A matrix representing the intersection form of the
         plumbing."""
         if self._intersection_form is None:
-            intersection_form = Matrix(list(self._graph.get_adjacency()))
+            intersection_form = self._graph.adjacency_matrix()
             for i in range(0, self._vertex_count):
                 intersection_form[i, i] = self._weight_vector[i,0]
             self._intersection_form = intersection_form
@@ -137,12 +154,21 @@ class Plumbing:
         return self._intersection_smith_form
 
     @property
+    def is_intersection_form_non_singular(self):
+        if self._is_intersection_form_non_singular is None:
+            d = self.intersection_form.det()
+            if d == 0:
+                self._is_intersection_form_non_singular = False
+            else:
+                self._is_intersection_form_non_singular = True
+        return self._is_intersection_form_non_singular
+
+    @property
     def is_tree(self):
         """bool: True if the plumbing diagram is a finite tree, False
         otherwise."""
         if self._is_tree is None:
-            self._is_tree = self._graph.is_connected()\
-                            and (self._edge_count == self._vertex_count - 1)
+            self._is_tree = self._graph.is_tree()
         return self._is_tree
 
     @property
@@ -224,16 +250,21 @@ class Plumbing:
                 comp_seq.append(deepcopy(x))
                 z = x * self.intersection_form
             self._artin_fcycle = x, comp_seq
+        else:
+            self._artin_fcycle = "Not applicable; plumbing is not a negative\
+                                  definite tree."
         return self._artin_fcycle
 
     @property
     def is_weakly_elliptic(self):
-        """bool: True if the plumbing is weakly elliptic, False otherwise."""
+        """bool: True if the plumbing is weakly elliptic, False or N/A
+        otherwise.
+        """
         if self._is_weakly_elliptic is None:
             if self.is_tree and self.definiteness_type == "negative definite":
-                K = [-i-2 for i in self._graph.vs["v_weights"]]
-                K = Matrix(K)
-                m = -(K * self.artin_fcycle[0].T
+                k = [-i-2 for i in self._graph.vs["v_weights"]]
+                k = Matrix(k)
+                m = -(k * self.artin_fcycle[0].T
                       + self.artin_fcycle[0]
                       * self.intersection_form
                       * self.artin_fcycle[0].T)[0,0] / 2
@@ -243,17 +274,18 @@ class Plumbing:
                 else:
                     self._is_weakly_elliptic = False
             else:
-                self._is_weakly_elliptic = False
+                self._is_weakly_elliptic = "Not applicable; plumbing is not a\
+                                            negative definite tree."
         return self._is_weakly_elliptic
 
     @property
     def is_rational(self):
-        """bool: True if the plumbing is rational, False otherwise."""
+        """bool: True if the plumbing is rational, False or N/A otherwise."""
         if self._is_rational is None:
             if self.is_tree and self.definiteness_type == "negative definite":
-                K = [-i-2 for i in self._graph.vs["v_weights"]]
-                K = Matrix(K)
-                m = -(K * self.artin_fcycle[0].T
+                k = [-i-2 for i in self._graph.vs["v_weights"]]
+                k = Matrix(k)
+                m = -(k * self.artin_fcycle[0].T
                       + self.artin_fcycle[0]
                       * self.intersection_form
                       * self.artin_fcycle[0].T)[0,0] / 2
@@ -263,7 +295,8 @@ class Plumbing:
                 else:
                     self._is_rational = False
             else:
-                self._is_rational = False
+                self._is_rational = "Not applicable; plumbing is not a negative\
+                                     definite tree."
         return self._is_rational
 
     @property
@@ -295,9 +328,9 @@ class Plumbing:
                                 v = deepcopy(self._vertices_dict)
                                 v[i] = v[i] - counter
                                 plumb = Plumbing(v, self._edges)
-                                K = [-j-2 for j in v.values()]
-                                K = Matrix(K)
-                                m = -(K * plumb.artin_fcycle[0].T
+                                k = [-j-2 for j in v.values()]
+                                k = Matrix(k)
+                                m = -(k * plumb.artin_fcycle[0].T
                                       + plumb.artin_fcycle[0]
                                       * self.intersection_form
                                       * plumb.artin_fcycle[0].T)[0,0] / 2
@@ -305,6 +338,9 @@ class Plumbing:
                                     self._is_almost_rational = True
                                     break
                             counter = counter + 1
+            else:
+                self._is_almost_rational = "Not applicable; plumbing is not a\
+                                            negative definite tree."
         return self._is_almost_rational
 
     @property
@@ -362,29 +398,28 @@ class Plumbing:
         return self._homology
 
     def display(self):
-        """Displays a plot of the plumbing diagram."""
-        self._plot.show()
+        self._graph_plot.show()
 
-    def is_in_integer_image(self, K):
-        """Given a vector K, check if it is in the integer image of the
+    def is_in_integer_image(self, k):
+        """Given a vector k, check if it is in the integer image of the
         intersection form.
 
         Parameters
         ----------
-        K: list
+        k: list
             A list of integers of length = self.vertex_count.
 
         Returns
         -------
         bool
-            True if K is in the integer image of the intersection form, False
+            True if k is in the integer image of the intersection form, False
             otherwise.
 
         """
-        K = Matrix(K).T
-        if self.definiteness_type == "negative definite":
-            H = self.intersection_form.inverse()*K
-            for x in H.column(0):
+        k = Matrix(k).T
+        if self.is_intersection_form_non_singular:
+            h = self.intersection_form.inverse()*k
+            for x in h.column(0):
                 if float(x) % 1 != 0:
                     return False
             return True
@@ -393,57 +428,57 @@ class Plumbing:
             D = smith[0]
             U = smith[1]
             num_of_pivots = self.vertex_count - D.diagonal().count(0)
-            J = U * K
+            j = U * k
             for i in range(0, num_of_pivots):
-                if float(J[i, 0]) % float(D[i, i]) != 0:
+                if float(j[i, 0]) % float(D[i, i]) != 0:
                     return False
             for i in range(num_of_pivots, self.vertex_count):
-                if float(J[i, 0]) != 0:
+                if float(j[i, 0]) != 0:
                     return False
             return True
 
-    def equiv_spinc_reps(self, K1, K2):
+    def equiv_spinc_reps(self, k1, k2):
         """Given two characteristic vectors, check if they represent the same
         spinc structure
 
         Parameters
         ----------
-        K1: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k1: list
+            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
 
-        K2: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k2: list
+            A list of integers [y_1, ..., y_s] where s = self.vertex_count.
 
         Returns
         -------
         bool
-            True if K1 and K2 represent the same spinc structure on the
+            True if k1 and k2 represent the same spinc structure on the
             plumbed 3-manifold, False otherwise.
 
         """
 
         try:
-            K1 = Matrix(K1).T
-            K2 = Matrix(K2).T
+            k1 = Matrix(k1).T
+            k2 = Matrix(k2).T
             for i in range(0, self.vertex_count):
-                if (float(K1[i, 0])-float(self.weight_vector[i, 0])) % 2 != 0:
+                if (float(k1[i, 0])-float(self.weight_vector[i, 0])) % 2 != 0:
                     raise Exception
-                if (float(K2[i, 0])-float(self.weight_vector[i, 0])) % 2 != 0:
+                if (float(k2[i, 0])-float(self.weight_vector[i, 0])) % 2 != 0:
                     raise Exception
-            K = (1/2)*(K1-K2)
-            K = K.column(0)
-            return self.is_in_integer_image(K)
+            k = (1/2)*(k1-k2)
+            k = k.column(0)
+            return self.is_in_integer_image(k)
         except:
             print("Error: one or more of the inputs are not a characteristic "
                   "vector.")
 
-    def char_vector_properties(self, K):
-        """Given a characteristic vector K, compute some basic properties.
+    def char_vector_properties(self, k):
+        """Given a characteristic vector k, compute some basic properties.
 
         Parameters
         ----------
-        K: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k: list
+            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
 
         Returns
         -------
@@ -453,21 +488,21 @@ class Plumbing:
             the order of the 1st Chern class of the associated spinc structure
             on the plumbed 3-manifold, c is the square of the 1st Chern class of
             the associated spinc structure on the plumbed 4-manifold (in
-            other words, c = K^2).
+            other words, c = k^2).
 
         """
         try:
-            K = Matrix(K).T
+            k = Matrix(k).T
             for i in range(0, self.vertex_count):
-                if (float(K[i, 0])-float(self.weight_vector[i, 0])) % 2 != 0:
+                if (float(k[i, 0])-float(self.weight_vector[i, 0])) % 2 != 0:
                     raise Exception
 
-            if self.definiteness_type == "negative definite":
-                H = self.intersection_form.inverse()*K
-                denominators_of_H_entries = [x.denominator() for x in
-                                             H.column(0)]
-                order_of_chern_class = abs(lcm(denominators_of_H_entries))
-                square = (K.T * H)[0, 0]
+            if self.is_intersection_form_non_singular:
+                h = self.intersection_form.inverse()*k
+                denominators_of_h_entries = [x.denominator() for x in
+                                             h.column(0)]
+                order_of_chern_class = abs(lcm(denominators_of_h_entries))
+                square = (k.T * h)[0, 0]
                 return "Torsion", order_of_chern_class, square
             else:
                 smith = self.intersection_smith_form
@@ -475,36 +510,36 @@ class Plumbing:
                 U = smith[1]
                 V = smith[2]
                 num_of_pivots = self.vertex_count - D.diagonal().count(0)
-                J = U * K
+                j = U * k
 
                 for i in range(num_of_pivots, self.vertex_count):
-                    if J[i, 0] != 0:
+                    if j[i, 0] != 0:
                         return "Non-Torsion", "N/A", "N/A"
 
-                H = self.vertex_count*[0]
+                h = self.vertex_count*[0]
 
                 for i in range(0, num_of_pivots):
-                    H[i] = J[i, 0]/D[i, i]
+                    h[i] = j[i, 0]/D[i, i]
 
-                denoms_of_non_zero_H_entries = [H[i].denominator() for i in
+                denoms_of_non_zero_h_entries = [h[i].denominator() for i in
                                                 range(0, num_of_pivots)]
 
-                order_of_chern_class = abs(lcm(denoms_of_non_zero_H_entries))
-                H = V * Matrix(H).T
-                square = (K.T * H)[0,0]
+                order_of_chern_class = abs(lcm(denoms_of_non_zero_h_entries))
+                h = V * Matrix(h).T
+                square = (k.T * h)[0,0]
                 return "Torsion", order_of_chern_class, square
         except:
             print("Error: input is not a characteristic vector.")
 
-    def chi(self, K, x):
+    def chi(self, k, x):
         """
-        Given a vector K and a lattice point x (represented as a vector),
-        compute chi_K(x) = -1/2(K(x) + (x,x)).
+        Given a vector k and a lattice point x (represented as a vector),
+        compute chi_k(x) = -1/2(k(x) + (x,x)).
 
         Parameters
         ----------
-        K: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k: list
+            A list of integers [a_1, ..., a_s] where s = self.vertex_count.
 
         x: list
             A list of integers [x_1, ..., x_s] where s = self.vertex_count.
@@ -512,46 +547,48 @@ class Plumbing:
         Returns
         -------
         sage constant
-            The value of chi_K(x)
+            The value of chi_k(x)
 
         """
 
-        K = Matrix(K)
+        k = Matrix(k)
         x = Matrix(x).T
-        return -(1/2)*(K * x + x.T * self.intersection_form * x)[0,0]
+        return -(1/2)*(k * x + x.T * self.intersection_form * x)[0,0]
 
-    def chi_min(self, K):
+    def chi_min(self, k):
         """
-        Given a vector K, computes the minimum of the function chi_K on
+        Given a vector k, computes the minimum of the function chi_k on
         Euclidean space and computes the vector which achieves this minimum.
         Note this vector, in general, need not be integral.
 
         Parameters
         ----------
-        K: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k: list
+            A list of integers [a_1, ..., a_s] where s = self.vertex_count.
 
         Returns
         -------
         tuple
-            (a,b) where: a is the minimum value of Chi_K over R^s and b is a
+            (a,b) where: a is the minimum value of chi_k over R^s and b is a
             list representing the unique vector which achieves this minimum.
 
         """
+        if self.definiteness_type == "negative definite":
+            chi_min = self.char_vector_properties(k)[2]/8
+            k = Matrix(k).T
+            chi_min_vector = -(1/2) * self.intersection_form.inverse() * k
+            return chi_min, list(chi_min_vector.column(0))
+        else:
+            return "Only implemented for negative definite plumbings."
 
-        chi_min = self.char_vector_properties(K)[2]/8
-        K = Matrix(K).T
-        chi_min_vector = -(1/2) * self.intersection_form.inverse() * K
-        return chi_min, list(chi_min_vector.column(0))
-
-    def F(self, K, x):
+    def F(self, k, x):
         """
-        Given a vector K and a lattice element x, computes F(x).
+        Given a vector k and a lattice element x, computes F(x).
 
         Parameters
         ----------
-        K: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k: list
+            A list of integers [a_1, ..., a_s] where s = self.vertex_count.
         x: list
             A list of integers [x_1, ..., x_s] where s = self.vertex_count.
 
@@ -561,9 +598,9 @@ class Plumbing:
             The value F(x).
 
         """
-        K = Matrix(K).T
+        k = Matrix(k).T
         x = Matrix(x).T
-        y = 2*self.intersection_form*x + K - self.weight_vector\
+        y = 2*self.intersection_form*x + k - self.weight_vector\
                                            - self.degree_vector
         F = 1
         for i in range(0, self.vertex_count):
@@ -594,22 +631,23 @@ class Plumbing:
                     return F
         return F
 
-    def chi_local_min_bounds(self, K):
+    def chi_local_min_bounds(self, k):
         """
-        Given a vector K, computes two lists [-chi_K(-e_1), ..., -chi(-e_s)]
-        and [chi_K(e_1), ..., chi_K(e_s)] where e_i = (0, ..., 0, 1, 0, ..., 0)
-        is the ith standard basis vector.
+        Given a vector k, computes two lists [-chi_k(-e_1), ..., -chi_k(-e_s)]
+        and [chi_k(e_1), ..., chi_k(e_s)] where e_i = (0, ..., 0, 1, 0, ..., 0)
+        is the ith standard basis vector. For the purpose of this function, see
+        the function chi_local_min_set.
 
         Parameters
         ----------
-        K: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k: list
+            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
 
         Returns
         -------
         tuple
-            (a,b) where: a = [-chi_K(-e_1), ..., -chi(-e_s)] and
-            b = [chi_K(e_1), ..., chi_K(e_s)]
+            (a,b) where: a = [-chi_k(-e_1), ..., -chi_k(-e_s)] and
+            b = [chi_k(e_1), ..., chi_k(e_s)]
 
         """
         I = Matrix.identity(self.vertex_count)
@@ -617,33 +655,34 @@ class Plumbing:
         positive_basis = [I.row(i) for i in range(0, self.vertex_count)]
         negative_basis = [negative_I.row(i) for i in
                           range(0, self.vertex_count)]
-        chi_upper = [self.chi(K, x) for x in positive_basis]
-        chi_lower = [-self.chi(K, x) for x in negative_basis]
+        chi_upper = [self.chi(k, x) for x in positive_basis]
+        chi_lower = [-self.chi(k, x) for x in negative_basis]
         return chi_lower, chi_upper
 
-    def chi_local_min_set(self, K):
+    def chi_local_min_set(self, k):
         """
-        Given a vector K, computes the set of lattice points at
-        which chi_K achieves a local min, when restricted to the lattice. In
+        Given a vector k, computes the set of lattice points at
+        which chi_k achieves a local min, when restricted to the lattice. In
         other words, it computes the lattice points x such that
-        chi_K(x) <= chi_K(x +/- e_i) for all i where
+        chi_k(x) <= chi_k(x +/- e_i) for all i where
         e_i = (0, ..., 0, 1, 0, ..., 0)  is the ith standard basis vector. Note
-        chi_K(x +/- e_i) = chi_K(x)+ chi_K(+/- e_i) -/+ (x, e_i). Hence, x is
-        in the min set iff -chi_K(-e_i) <= (x, e_i) <= chi_K(e_i) for all i.
+        chi_k(x +/- e_i) = chi_k(x)+ chi_k(+/- e_i) -/+ (x, e_i). Hence, x is
+        in the min set iff -chi_k(-e_i) <= (x, e_i) <= chi_k(e_i) for all i.
         This explains the reason for the helper function chi_local_min_bounds.
 
         Parameters
         ----------
-        K: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k: list
+            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
         Returns
         -------
         lists
-            Each element of the output list is a tuple (a, b, c) where a is an
-            element of the local min set, b is chi_K(a), and c = F(a).
+            Each element of the output list is a tuple (a, b, c, d) where a is an
+            element of the local min set, b is chi_k(a), c = F(a),
+            d = a dot (weight_vector + degree_vector).
         """
         if self.definiteness_type == "negative definite":
-            bounds = self.chi_local_min_bounds(K)
+            bounds = self.chi_local_min_bounds(k)
             M_inv = self.intersection_form.inverse()
             iterator = [range(bounds[0][i], bounds[1][i]+1) for i in
                         range(0, self.vertex_count)]
@@ -653,24 +692,27 @@ class Plumbing:
                 y = M_inv*Matrix(x).T
                 if y in MatrixSpace(ZZ, self.vertex_count, 1):
                     u = tuple(y.column(0))
-                    lms.append((u,self.chi(K, u), self.F(K, u)))
+                    pairing = (Matrix(u)*(self.weight_vector
+                               + self.degree_vector))[0,0]
+                    lms.append((u,self.chi(k, u), self.F(k, u), pairing))
             lms.sort(key = lambda x:x[1])
             return lms
         else:
-            print("not yet implemented for non-negative definite plumbings")
+            print("Only implemented for negative definite plumbings")
 
 
-    def chi_sublevels(self, K, n):
+    def chi_sublevels(self, k, n):
         """
-        Given a characteristic vector K and a positive integer n, computes the
-        lattice elements in each of the first n non-empty sublevel sets of
-        chi_K. Also, computes the value of chi_K and F on each lattice point in
-        each sublevel set.
+        Given a characteristic vector k and a positive integer n, computes the
+        lattice points in each of the first n non-empty sublevel sets of
+        chi_k. Also, computes chi_k(x), F(x), and,
+        x dot (weight_vector + degree_vector) associated to each lattice
+        point x in each sublevel set.
 
         Parameters
         ----------
-        K: list
-            A list of integers [k_1, ..., k_s] where s = self.vertex_count.
+        k: list
+            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
 
         n: int
             A positive integer.
@@ -680,12 +722,12 @@ class Plumbing:
         list
             A list of the form [S_1, ..., S_n] where S_i is the ith non-empty
             sublevel set. Each S_i is a set whose elements are tuples of the
-            form (a, b, c) where a is a lattice point in S_i, b is the value
-            of chi_K on that element, and c is the value of F on that element.
+            form (a, b, c, d) where a is a lattice point in S_i, b = chi_k(a),
+            c = F(a), and d = a dot (weight_vector + degree_vector).
 
         """
         if self.definiteness_type == "negative definite":
-            lms = self.chi_local_min_set(K)
+            lms = self.chi_local_min_set(k)
 
             groups = groupby(lms, operator.itemgetter(1))
             lms_partition = [tuple(group) for key, group in groups]
@@ -703,12 +745,16 @@ class Plumbing:
                         z = list(x[0])
                         y[j] = y[j]-1
                         z[j] = z[j]+1
-                        if self.chi(K, y) == sublevel_height:
+                        if self.chi(k, y) == sublevel_height:
+                            pairing = (Matrix(y)*(self.weight_vector
+                                       + self.degree_vector))[0,0]
                             sublevel_temp2.add((tuple(y), sublevel_height,
-                                                self.F(K, tuple(y))))
-                        if self.chi(K, z) == sublevel_height:
+                                                self.F(k, tuple(y)), pairing))
+                        if self.chi(k, z) == sublevel_height:
+                            pairing = (Matrix(z)*(self.weight_vector
+                                       + self.degree_vector))[0,0]
                             sublevel_temp2.add((tuple(z), sublevel_height,
-                                                self.F(K, tuple(z))))
+                                                self.F(k, tuple(z)), pairing))
                 for u in lms_partition:
                     if u[0][1] == sublevel_height:
                         sublevel_temp2 = sublevel_temp2.union(set(u))
@@ -718,55 +764,120 @@ class Plumbing:
             return sublevels
 
         else:
-            print("Not yet implemented for non-negative definite plumbings.")
+            print("Only implemented for negative definite plumbings.")
 
-    def chi_sublevels_with_graphs(self, K, n):
+    def bigraded_root(self, k, n):
+        """
+        Given a characteristic vector k and a positive integer n, computes
+        the first n levels of the bigraded root.
+        """
         if self.definiteness_type == "negative definite":
-            sublevels = self.chi_sublevels(K, n)
-            graphs = []
-            basis_vectors = []
+            sublevels = self.chi_sublevels(k, n)
 
-            big_graph = ig.Graph()
-            big_sublevel_list = list(sublevels[-1])
-            big_sublevel_list.sort()
-            vertices = [list(w[0]) for w in big_sublevel_list]
-            v_labels = []
-            for x in big_sublevel_list:
-                if x[2] == 0:
-                    v_labels.append(None)
-                else:
-                    v_labels.append(x[2])
+            k_sqaured = self.char_vector_properties(k)[2]
+
+            for element in sublevels[0]:
+                break
+            min_chi_level = element[1]
+            d_inv = -2*(min_chi_level) + self.vertex_count/4\
+                    + k_sqaured/4
+            normalization_term = -(k_sqaured-3*self.vertex_count
+                                   + 2*sum(self.weight_vector)[0])/4 + sum(k)/2\
+                                   - sum(self.degree_vector)[0]/4
+
+            top_sublevel = list(sublevels[-1])
+            top_sublevel.sort()
+            vertices = [list(w[0]) for w in top_sublevel]
             num_of_vertices = len(vertices)
-            big_graph.add_vertices(int(num_of_vertices))
-            big_graph.vs["label"] = v_labels
+
+            top_sublevel_graph = Graph(num_of_vertices)
 
             edges = []
             for i in range(1, num_of_vertices):
                 for j in range(0, self.vertex_count):
                     x = copy(vertices[i])
                     x[j] = x[j] - 1
-                    y = copy(vertices[i])
+                    y = copy(vertices[j])
                     y[j] = y[j] + 1
                     if x in vertices[:i]:
-                        edges.append((int(vertices[:i].index(x)), int(i)))
+                        edges.append((vertices[:i].index(x), i))
                     if y in vertices[:i]:
-                        edges.append((int(vertices[:i].index(y)), int(i)))
+                        edges.append((vertices[:i].index(y), i))
 
-            big_graph.add_edges(edges)
+            top_sublevel_graph.add_edges(edges)
 
-            graphs = []
+            sublevel_graphs = []
             for sl in sublevels[:-1]:
-                v_list = [big_sublevel_list.index(x) for x in sl]
-                graphs.append(big_graph.subgraph(v_list))
+                v_list = [top_sublevel.index(x) for x in sl]
+                sublevel_graphs.append(top_sublevel_graph.subgraph(v_list))
 
-            graphs.append(big_graph)
+            sublevel_graphs.append(top_sublevel_graph)
 
-            plots = [ig.plot(g, bbox = (2000, 2000), vertex_size = int(5),
-                     vertex_color = "black", vertex_label_size = 20,
-                     vertex_label_color="red", vertex_label_dist = int(2))
-                     for g in graphs]
+            connected_components = []
+            for graph in sublevel_graphs:
+                connected_components.append(graph.connected_components())
 
-            return sublevels, graphs, plots
+            bgr_vertices = []
+            bgr_vertex_two_variable_weights = []
+            index = 0
+            h_index = 0
+            v_index = 0
+            h_index_dictionary = {}
+            Q.<q> = PuiseuxSeriesRing(QQ)
+            T.<t> = LaurentPolynomialRing(QQ)
+            for x in connected_components:
+                for y in x:
+                    two_vpoly = 0
+                    for z in y:
+                        w = top_sublevel[z]
+                        two_vpoly = two_vpoly\
+                                    + (w[2])*q^(2*(w[1]) + w[3])*t^(w[3])
+                    bgr_vertex_two_variable_weights.append(two_vpoly)
+                    bgr_vertices.append((h_index, v_index, y[0], '$\hspace{4}'
+                                         + str(latex(d_inv + 2*v_index))
+                                         + ': P_{'
+                                         + str(index) + '}$'))
+
+                    h_index = h_index + 1
+                    index = index + 1
+                h_index_dictionary[v_index] = h_index
+                h_index = 0
+                v_index = v_index + 1
+
+            bgr = Graph()
+            bgr.add_vertices(bgr_vertices)
+
+            bgr_edges = []
+            for x in bgr_vertices:
+                if x[1]< v_index-1:
+                    for i in range(0, h_index_dictionary[x[1]+1]):
+                        if x[2] in connected_components[x[1]+1][i]:
+                            ind = sum([h_index_dictionary[i] for
+                                          i in range(0,x[1]+1)]) + i
+                            bgr_edges.append((x, bgr_vertices[ind]))
+                            break
+            bgr.add_edges(bgr_edges)
+
+            bgr = Graph([(CustomVertex(a), CustomVertex(b)) for (a, b) in
+                         bgr.edges(labels=False)])
+
+            options = {'layout': 'forest',
+                       'forest_roots': bgr_vertices[-h_index_dictionary[v_index-1]:],
+                       'vertex_color': 'black', 'vertex_size': 20}
+
+            bgr_plot = GraphPlot(bgr, options)
+
+            for i in range(0, index):
+                bgr_vertex_two_variable_weights[i] = q^(normalization_term)*bgr_vertex_two_variable_weights[i]
+
+            bgr_plot.show()
+
+            for i in range(0, index):
+                print('P_{' + str(i) + '} = '
+                               + str(bgr_vertex_two_variable_weights[i]))
+                print('\n')
+
+            return bgr_plot, bgr_vertex_two_variable_weights
 
         else:
             print("Not yet implemented for non-negative definite plumbings.")
