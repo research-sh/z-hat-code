@@ -75,14 +75,14 @@ class Plumbing:
                 adjacent_verts = []
                 for x in edges:
                     if x[0] == i:
-                        adjacent_verts.append('$v_{' + str(x[1]) + '}\hspace{2} '
+                        adjacent_verts.append('$v_{' + str(x[1]) + '}\\hspace{2} '
                                               + str(vertices_dict[x[1]])
                                               + '$')
                     elif x[1] == i:
-                        adjacent_verts.append('$v_{' + str(x[0]) + '}\hspace{2} '
+                        adjacent_verts.append('$v_{' + str(x[0]) + '}\\hspace{2} '
                                               + str(vertices_dict[x[0]])
                                               + '$')
-                self._sage_formatted_graph_data['$v_{' + str(i) + '}\hspace{2} '
+                self._sage_formatted_graph_data['$v_{' + str(i) + '}\\hspace{2} '
                                                 + str(vertices_dict[i])
                                                 + '$']\
                                                 = copy(adjacent_verts)
@@ -833,7 +833,7 @@ class Plumbing:
                         two_vpoly = two_vpoly\
                                     + (w[2])*q^(2*(w[1]) + w[3])*t^(w[3])
                     bgr_vertex_two_variable_weights.append(two_vpoly)
-                    bgr_vertices.append((h_index, v_index, y[0], '$\hspace{4}'
+                    bgr_vertices.append((h_index, v_index, y[0], '$\\hspace{4}'
                                          + str(latex(d_inv + 2*v_index))
                                          + ': P_{'
                                          + str(index) + '}$'))
