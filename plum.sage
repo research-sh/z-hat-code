@@ -70,24 +70,16 @@ class Plumbing:
             self._vertex_count = len(vertices_dict)
             self._edge_count = len(edges)
 
-            self._sage_formatted_graph_data = {}
-            for i in range(0, self._vertex_count):
-                adjacent_verts = []
-                for x in edges:
-                    if x[0] == i:
-                        adjacent_verts.append('$v_{' + str(x[1]) + '}\\hspace{2} '
-                                              + str(vertices_dict[x[1]])
-                                              + '$')
-                    elif x[1] == i:
-                        adjacent_verts.append('$v_{' + str(x[0]) + '}\\hspace{2} '
-                                              + str(vertices_dict[x[0]])
-                                              + '$')
-                self._sage_formatted_graph_data['$v_{' + str(i) + '}\\hspace{2} '
-                                                + str(vertices_dict[i])
-                                                + '$']\
-                                                = copy(adjacent_verts)
+            self._graph = Graph()
+            self._vertex_list = ['$v_{' + str(i) + '}\\hspace{2} '
+                                  + str(vertices_dict[i])
+                                  + '$' for i in range(0, self._vertex_count)]
 
-            self._graph = Graph(self._sage_formatted_graph_data)
+            self._edge_list = [(self._vertex_list[x[0]], self._vertex_list[x[1]])
+                               for x in edges]
+
+            self._graph.add_vertices(self._vertex_list)
+            self._graph.add_edges(self._edge_list)
 
             self._plot_options = options = {'vertex_color': 'black',
                                             'vertex_size': 20,
@@ -96,7 +88,9 @@ class Plumbing:
             self._graph_plot = GraphPlot(self._graph, self._plot_options)
 
             self._weight_vector = Matrix(list(vertices_dict.values())).T
-            self._degree_vector = Matrix(self._graph.degree()).T
+            self._degree_vector = [self._graph.degree(x) for x in
+                                   self._vertex_list]
+            self._degree_vector = Matrix(self._degree_vector).T
 
             self._intersection_form = None
             self._intersection_smith_form = None
@@ -111,8 +105,7 @@ class Plumbing:
             self._homology = None
 
         except:
-            print("Error: Plumbing entered incorrectly. Please check"
-                  " input.")
+            print("Error: Plumbing entered incorrectly. Please check input.")
 
     @property
     def vertex_count(self):
@@ -774,16 +767,16 @@ class Plumbing:
         if self.definiteness_type == "negative definite":
             sublevels = self.chi_sublevels(k, n)
 
-            k_sqaured = self.char_vector_properties(k)[2]
+            k_squared = self.char_vector_properties(k)[2]
 
             for element in sublevels[0]:
                 break
             min_chi_level = element[1]
             d_inv = -2*(min_chi_level) + self.vertex_count/4\
-                    + k_sqaured/4
-            normalization_term = -(k_sqaured-3*self.vertex_count
-                                   + 2*sum(self.weight_vector)[0])/4 + sum(k)/2\
-                                   - sum(self.degree_vector)[0]/4
+                    + k_squared/4
+            normalization_term = -(k_squared + 3*self.vertex_count
+                                   + sum(self.weight_vector)[0])/4 + sum(k)/2\
+                                   - sum(self.weight_vector + self.degree_vector)[0]/4
 
             top_sublevel = list(sublevels[-1])
             top_sublevel.sort()
@@ -792,19 +785,19 @@ class Plumbing:
 
             top_sublevel_graph = Graph(num_of_vertices)
 
-            edges = []
+            ts_edges = []
             for i in range(1, num_of_vertices):
                 for j in range(0, self.vertex_count):
                     x = copy(vertices[i])
                     x[j] = x[j] - 1
-                    y = copy(vertices[j])
+                    y = copy(vertices[i])
                     y[j] = y[j] + 1
                     if x in vertices[:i]:
-                        edges.append((vertices[:i].index(x), i))
+                        ts_edges.append((vertices[:i].index(x), i))
                     if y in vertices[:i]:
-                        edges.append((vertices[:i].index(y), i))
+                        ts_edges.append((vertices[:i].index(y), i))
 
-            top_sublevel_graph.add_edges(edges)
+            top_sublevel_graph.add_edges(ts_edges)
 
             sublevel_graphs = []
             for sl in sublevels[:-1]:
@@ -814,8 +807,8 @@ class Plumbing:
             sublevel_graphs.append(top_sublevel_graph)
 
             connected_components = []
-            for graph in sublevel_graphs:
-                connected_components.append(graph.connected_components())
+            for g in sublevel_graphs:
+                connected_components.append(g.connected_components())
 
             bgr_vertices = []
             bgr_vertex_two_variable_weights = []
@@ -868,7 +861,7 @@ class Plumbing:
             bgr_plot = GraphPlot(bgr, options)
 
             for i in range(0, index):
-                bgr_vertex_two_variable_weights[i] = q^(normalization_term)*bgr_vertex_two_variable_weights[i]
+                bgr_vertex_two_variable_weights[i] = q^(normalization_term)*(bgr_vertex_two_variable_weights[i])
 
             bgr_plot.show()
 
