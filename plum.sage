@@ -1,4 +1,35 @@
-"""A sage package for analyzing plumbed manifolds.
+"""A sage package for analyzing manifolds plumbed along 2-spheres.
+
+This package enables the user to enter a plumbing diagram and return basic
+information about the corresponding 3- and 4-dimensional manifolds,
+for example the intersection form, homology, etc.
+
+For negative definite plumbing trees equipped with a spin^c structure, the
+program can also compute the graded root [1]_, weighted_graded_root [2]_,
+:math:'\widehat{Z}' invariant [3]_, and the
+:math:'\widehat{\vphantom{\rule{5pt}{10pt}}\smash{\widehat{Z}}\,}\!'
+invariant [2]_.
+
+For more about plumbed manifolds see [4]_ and [5]_
+
+References
+----------
+.. [1] András Némethi, On the Ozsváth-Szabó invariant of negative definite
+       plumbed 3-manifolds, Geom. Topol. 9 (2005), 991–1042. MR 2140997
+.. [2] Rostislav Akhmechet, Peter K. Johnson, and Vyacheslav Krushkal,
+       Lattice cohomology and q- series invariants of 3-manifolds,
+       arXiv preprint arXiv:2109.14139 (2021).
+.. [3] Sergei Gukov, Du Pei, Pavel Putrov, and Cumrun Vafa, BPS spectra and
+       3-manifold invariants, J. Knot Theory Ramifications 29 (2020),
+       no. 2, 2040003, 85. MR 4089709
+.. [4] Robert E. Gompf and András I. Stipsicz, 4-manifolds and Kirby calculus,
+       Graduate Studies in Mathematics, vol. 20, American Mathematical Society,
+       Providence, RI, 1999. MR 1707327
+.. [5] Walter D. Neumann, A calculus for plumbing applied to the topology of
+       complex surface singularities and degenerating complex curves,
+       Trans. Amer. Math. Soc. 268 (1981), no. 2, 299–344. MR 632532
+.. [6] Peter Ozsváth and Zoltán Szabó, On the Floer homology of plumbed
+       three-manifolds, Geom. Topol. 7 (2003), 185–224. MR 1988284
 
 """
 
@@ -23,7 +54,7 @@ class CustomVertex(tuple):
         return str(self.vertex[-1])
 
 class Plumbing:
-    """A class for analyzing plumbed manifolds.
+    """A class for analyzing 3-manifolds plumbed along 2-spheres.
 
     Parameters
     ----------
@@ -34,31 +65,17 @@ class Plumbing:
         A list of the form [(a,b)] where (a,b) represents an edge between the
         vertices of indicies a and b.
 
-    Attributes
-    ----------
-    vertex_count
-    edge_count
-    weight_vector
-    degree_vector
-    intersection_form
-    intersection_smith_form
-    is_intersection_form_non_singular
-    is_tree
-    definiteness_type
-    bad_vertices
-    artin_fcycle
-    is_weakly_elliptic
-    is_rational
-    is_almost_rational
-    homology
-
     Example
     -------
-    >>> P = Plumbing({0:-3,1:-10}, [(0,1)])
+    >>> P = Plumbing({0:-1, 1:-2, 2:-3, 3:-7}, [(0,1), (0,2), (0,3)])
 
-    Here P is the plumbing consisting of 2 vertices joined by a single
-    edge. One vertex has weight -3 and the other has weight -10.
-
+    Here P is the plumbing consisting of 4 vertices with weights
+    -1, -2, -3, and -7 respectively. Vertices 0 and 1, 0 and 2, 0 and 3
+    are connected by edges. P = -2 ------- -1 ------- -3
+                                            |
+                                            |
+                                            |
+                                           -7
     """
 
 
@@ -120,13 +137,14 @@ class Plumbing:
     @property
     def weight_vector(self):
         """Matrix: An sx1 matrix of the form [[m_1],...,[m_s]] where m_i is the
-        weight of vertex i."""
+        weight of vertex i and s is the number of vertices of the plumbing."""
         return self._weight_vector
 
     @property
     def degree_vector(self):
         """Matrix: An sx1 matrix of the form [[d_1],...,[d_s]] where d_i is the
-        degree (or valence) of vertex i."""
+        degree (or valence) of vertex i and s is the number of vertices of the
+        plumbing."""
         return self._degree_vector
 
     @property
@@ -142,12 +160,17 @@ class Plumbing:
 
     @property
     def intersection_smith_form(self):
+        """array_like: A list of the form D, U, V, where D is the smith normal
+        form of the intersection form and where U and V are matrices such that
+        U*intersection_form*V = D.
+        """
         if self._intersection_smith_form is None:
             self._intersection_smith_form = self.intersection_form.smith_form()
         return self._intersection_smith_form
 
     @property
     def is_intersection_form_non_singular(self):
+        "bool: True if the intersection form is non-singular, False otherwise."
         if self._is_intersection_form_non_singular is None:
             d = self.intersection_form.det()
             if d == 0:
@@ -196,8 +219,9 @@ class Plumbing:
     @property
     def bad_vertices(self):
         """tuple: A tuple of the form (bv, bv_count) where bv is a string
-        formatted for LaTeX listing the bad vertices, and bv_count is the
-        number of bad vertices.
+        listing the bad vertices, and bv_count is the number of bad vertices.
+        Recall a bad vertex is a vertex whose weight is greater than the
+        negative of its degree.
         """
         if self._bad_vertices is None:
             bv_count = 0
@@ -226,7 +250,8 @@ class Plumbing:
         """tuple: A tuple of the form (x, comp_seq) where x is the Artin
         fundamental cycle of the plumbing and comp_seq is the associated
         computation sequence used to compute x. The Artin fundamental cycle is
-        used to determine the rationality of the plumbing graph.
+        used to determine the rationality of the plumbing graph. See [1]_ for
+        more details about the Artin fundamental cycle.
         """
         if self._artin_fcycle is None and self.definiteness_type ==\
                 "negative definite" and self.is_tree:
@@ -293,50 +318,6 @@ class Plumbing:
         return self._is_rational
 
     @property
-    def is_almost_rational(self):
-        """bool/str: True if the plumbing is almost rational. Possibly
-        inconclusive depending on the test threshold. This is the amount by
-        which framings are decreased to test for rationality.
-        """
-        if self._is_almost_rational is None:
-            if self.is_tree and self.definiteness_type == "negative definite":
-                if self.bad_vertices[1] < 2:
-                    self._is_almost_rational = True
-                elif self._is_rational or self._is_weakly_elliptic:
-                    self._is_almost_rational = True
-                else:
-                    very_bad_vert_count = 0
-                    for i in range(0, self._vertex_count):
-                        if -self._weight_vector[i,0] \
-                                <= self._degree_vector[i,0] - 2:
-                            very_bad_vert_count = very_bad_vert_count + 1
-                    if very_bad_vert_count > 1:
-                        self._is_almost_rational = False
-                    else:
-                        self._is_almost_rational = "inconclusive, using test" \
-                                                   " threshold of 20"
-                        counter = 1
-                        while counter <= 20:
-                            for i in range(0, self._vertex_count):
-                                v = deepcopy(self._vertices_dict)
-                                v[i] = v[i] - counter
-                                plumb = Plumbing(v, self._edges)
-                                k = [-j-2 for j in v.values()]
-                                k = Matrix(k)
-                                m = -(k * plumb.artin_fcycle[0].T
-                                      + plumb.artin_fcycle[0]
-                                      * self.intersection_form
-                                      * plumb.artin_fcycle[0].T)[0,0] / 2
-                                if m == 1:
-                                    self._is_almost_rational = True
-                                    break
-                            counter = counter + 1
-            else:
-                self._is_almost_rational = "Not applicable; plumbing is not a\
-                                            negative definite tree."
-        return self._is_almost_rational
-
-    @property
     def homology(self):
         """tuple: A tuple of the form (homology_group, homology_generators,
         rank) where homology_group is the first homology of the plumbed
@@ -390,7 +371,73 @@ class Plumbing:
 
         return self._homology
 
+    def is_almost_rational(self, test_threshold):
+        """Tests if plumbing is almost rational.
+
+        Parameters
+        ----------
+        test_threshold: int
+            A non-negative integer which is the amount by
+            which framings are decreased to test for rationality. See [1]_
+            for the definition of almost rational.
+
+        Returns
+        -------
+        bool/str
+            True if plumbing is verfied to be almost rational given the
+            test threshold. False if determined to be not almost rational.
+            Otherwise, inconclusive given the choice of test threshold, or
+            not applicable if plumbing is not a negative definite tree.
+        """
+        try:
+            if (not test_threshold.is_integer()) or test_threshold < 0:
+                raise Exception("Test threshold parameter must be a\
+                                 non-negative integer.")
+            if self._is_almost_rational is None:
+                if self.is_tree and self.definiteness_type == "negative definite":
+                    if self.bad_vertices[1] < 2:
+                        self._is_almost_rational = True
+                    elif self._is_rational or self._is_weakly_elliptic:
+                        self._is_almost_rational = True
+                    else:
+                        very_bad_vert_count = 0
+                        for i in range(0, self._vertex_count):
+                            if -self._weight_vector[i,0] \
+                                    <= self._degree_vector[i,0] - 2:
+                                very_bad_vert_count = very_bad_vert_count + 1
+                        if very_bad_vert_count > 1:
+                            self._is_almost_rational = False
+                        else:
+                            self._is_almost_rational = "inconclusive, using\
+                                                        test threshold of " +\
+                                                       str(test_threshold) +\
+                                                       " try a larger test\
+                                                       threshold."
+                            counter = 1
+                            while counter <= test_threshold:
+                                for i in range(0, self._vertex_count):
+                                    v = deepcopy(self._vertices_dict)
+                                    v[i] = v[i] - counter
+                                    plumb = Plumbing(v, self._edges)
+                                    k = [-j-2 for j in v.values()]
+                                    k = Matrix(k)
+                                    m = -(k * plumb.artin_fcycle[0].T
+                                          + plumb.artin_fcycle[0]
+                                          * self.intersection_form
+                                          * plumb.artin_fcycle[0].T)[0,0] / 2
+                                    if m == 1:
+                                        self._is_almost_rational = True
+                                        break
+                                counter = counter + 1
+                else:
+                    self._is_almost_rational = "Not applicable; plumbing is not\
+                                                a negative definite tree."
+            return self._is_almost_rational
+        except Exception as e:
+            print(e)
+
     def display(self):
+        "Displays the plumbing graph."
         self._graph_plot.show()
 
     def is_in_integer_image(self, k):
@@ -432,15 +479,17 @@ class Plumbing:
 
     def equiv_spinc_reps(self, k1, k2):
         """Given two characteristic vectors, check if they represent the same
-        spinc structure
+        spin^c structure.
 
         Parameters
         ----------
         k1: list
-            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            of the plumbing.
 
         k2: list
-            A list of integers [y_1, ..., y_s] where s = self.vertex_count.
+            A list of integers [y_1, ..., y_s] where s is the number of vertices
+            of the plumbing.
 
         Returns
         -------
@@ -471,16 +520,17 @@ class Plumbing:
         Parameters
         ----------
         k: list
-            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            of the plumbing.
 
         Returns
         -------
         tuple
-            (a,b,c) where: a is a string which says if the associated spinc
+            (a,b,c) where: a is a string which says if the associated spin^c
             structure on the plumbed 3-manifold is torsion or non-torsion, b is
-            the order of the 1st Chern class of the associated spinc structure
+            the order of the 1st Chern class of the associated spin^c structure
             on the plumbed 3-manifold, c is the square of the 1st Chern class of
-            the associated spinc structure on the plumbed 4-manifold (in
+            the associated spin^c structure on the plumbed 4-manifold (in
             other words, c = k^2).
 
         """
@@ -488,7 +538,7 @@ class Plumbing:
             k = Matrix(k).T
             for i in range(0, self.vertex_count):
                 if (float(k[i, 0])-float(self.weight_vector[i, 0])) % 2 != 0:
-                    raise Exception
+                    raise Exception("Input is not a characteristic vector.")
 
             if self.is_intersection_form_non_singular:
                 h = self.intersection_form.inverse()*k
@@ -521,8 +571,8 @@ class Plumbing:
                 h = V * Matrix(h).T
                 square = (k.T * h)[0,0]
                 return "Torsion", order_of_chern_class, square
-        except:
-            print("Error: input is not a characteristic vector.")
+        except Exception as e:
+            print(e)
 
     def chi(self, k, x):
         """
@@ -532,10 +582,12 @@ class Plumbing:
         Parameters
         ----------
         k: list
-            A list of integers [a_1, ..., a_s] where s = self.vertex_count.
+            A list of integers [a_1, ..., a_s] where s is the number of vertices
+            of the plumbing.
 
         x: list
-            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            of the plumbing.
 
         Returns
         -------
@@ -557,7 +609,8 @@ class Plumbing:
         Parameters
         ----------
         k: list
-            A list of integers [a_1, ..., a_s] where s = self.vertex_count.
+            A list of integers [a_1, ..., a_s] where s is the number of vertices
+            of the plumbing.
 
         Returns
         -------
@@ -574,21 +627,24 @@ class Plumbing:
         else:
             return "Only implemented for negative definite plumbings."
 
-    def F(self, k, x):
+    def F_hat(self, k, x):
         """
-        Given a vector k and a lattice element x, computes F(x).
+        Given a vector k and a lattice element x, computes
+        :math: '\widehat{F}_{\Gamma, k}(x)'. See [2]_ for more details.
 
         Parameters
         ----------
         k: list
-            A list of integers [a_1, ..., a_s] where s = self.vertex_count.
+            A list of integers [a_1, ..., a_s] where s is the number of vertices
+            of the plumbing.
         x: list
-            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            of the plumbing.
 
         Returns
         -------
         int
-            The value F(x).
+            The value :math: '\widehat{F}_{\Gamma, k}(x)'
 
         """
         k = Matrix(k).T
@@ -628,13 +684,14 @@ class Plumbing:
         """
         Given a vector k, computes two lists [-chi_k(-e_1), ..., -chi_k(-e_s)]
         and [chi_k(e_1), ..., chi_k(e_s)] where e_i = (0, ..., 0, 1, 0, ..., 0)
-        is the ith standard basis vector. For the purpose of this function, see
-        the function chi_local_min_set.
+        is the ith standard basis vector and s is the number of vertices of the
+        plumbing. For the purpose of this function, see the function
+        chi_local_min_set.
 
         Parameters
         ----------
         k: list
-            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
+            A list of integers [x_1, ..., x_s].
 
         Returns
         -------
@@ -666,15 +723,17 @@ class Plumbing:
         Parameters
         ----------
         k: list
-            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            of the plumbing.
+
         Returns
         -------
         lists
-            Each element of the output list is a tuple (a, b, c, d) where a is an
-            element of the local min set, b is chi_k(a), c = F(a),
+            Each element of the output list is a tuple (a, b, c, d) where a is
+            an element of the local min set, b is chi_k(a), c = F_hat(a),
             d = a dot (weight_vector + degree_vector).
         """
-        if self.definiteness_type == "negative definite":
+        if self.definiteness_type == "negative definite" and self.is_tree:
             bounds = self.chi_local_min_bounds(k)
             M_inv = self.intersection_form.inverse()
             iterator = [range(bounds[0][i], bounds[1][i]+1) for i in
@@ -687,25 +746,26 @@ class Plumbing:
                     u = tuple(y.column(0))
                     pairing = (Matrix(u)*(self.weight_vector
                                + self.degree_vector))[0,0]
-                    lms.append((u,self.chi(k, u), self.F(k, u), pairing))
+                    lms.append((u,self.chi(k, u), self.F_hat(k, u), pairing))
             lms.sort(key = lambda x:x[1])
             return lms
         else:
-            print("Only implemented for negative definite plumbings")
+            print("Only implemented for negative definite plumbing trees")
 
 
     def chi_sublevels(self, k, n):
         """
-        Given a characteristic vector k and a positive integer n, computes the
-        lattice points in each of the first n non-empty sublevel sets of
-        chi_k. Also, computes chi_k(x), F(x), and,
+        Given a characteristic vector k and a positive integer n, this function
+        computes the lattice points in each of the first n non-empty sublevel
+        sets of chi_k. Also, computes chi_k(x), F_hat(x), and,
         x dot (weight_vector + degree_vector) associated to each lattice
         point x in each sublevel set.
 
         Parameters
         ----------
         k: list
-            A list of integers [x_1, ..., x_s] where s = self.vertex_count.
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            in the plumbing.
 
         n: int
             A positive integer.
@@ -719,52 +779,77 @@ class Plumbing:
             c = F(a), and d = a dot (weight_vector + degree_vector).
 
         """
-        if self.definiteness_type == "negative definite":
-            lms = self.chi_local_min_set(k)
+        try:
+            if (not n.is_integer()) or n < 1:
+                raise Exception("Second parameter must be a postive integer.")
+            if self.definiteness_type == "negative definite" and self.is_tree:
+                lms = self.chi_local_min_set(k)
 
-            groups = groupby(lms, operator.itemgetter(1))
-            lms_partition = [tuple(group) for key, group in groups]
+                groups = groupby(lms, operator.itemgetter(1))
+                lms_partition = [tuple(group) for key, group in groups]
 
-            min_level = lms_partition[0][0][1]
-            sublevels = [set(lms_partition[0])]
+                min_level = lms_partition[0][0][1]
+                sublevels = [set(lms_partition[0])]
 
-            for i in range(1, n):
-                sublevel_height = i + min_level
-                sublevel_temp1 = copy(sublevels[-1])
-                sublevel_temp2 = copy(sublevels[-1])
-                for x in sublevel_temp1:
-                    for j in range(0, self.vertex_count):
-                        y = list(x[0])
-                        z = list(x[0])
-                        y[j] = y[j]-1
-                        z[j] = z[j]+1
-                        if self.chi(k, y) == sublevel_height:
-                            pairing = (Matrix(y)*(self.weight_vector
-                                       + self.degree_vector))[0,0]
-                            sublevel_temp2.add((tuple(y), sublevel_height,
-                                                self.F(k, tuple(y)), pairing))
-                        if self.chi(k, z) == sublevel_height:
-                            pairing = (Matrix(z)*(self.weight_vector
-                                       + self.degree_vector))[0,0]
-                            sublevel_temp2.add((tuple(z), sublevel_height,
-                                                self.F(k, tuple(z)), pairing))
-                for u in lms_partition:
-                    if u[0][1] == sublevel_height:
-                        sublevel_temp2 = sublevel_temp2.union(set(u))
-                        break
-                sublevels.append(sublevel_temp2)
+                for i in range(1, n):
+                    sublevel_height = i + min_level
+                    sublevel_temp1 = copy(sublevels[-1])
+                    sublevel_temp2 = copy(sublevels[-1])
+                    for x in sublevel_temp1:
+                        for j in range(0, self.vertex_count):
+                            y = list(x[0])
+                            z = list(x[0])
+                            y[j] = y[j]-1
+                            z[j] = z[j]+1
+                            if self.chi(k, y) == sublevel_height:
+                                pairing = (Matrix(y)*(self.weight_vector
+                                           + self.degree_vector))[0,0]
+                                sublevel_temp2.add((tuple(y), sublevel_height,
+                                                    self.F_hat(k, tuple(y)),
+                                                    pairing))
+                            if self.chi(k, z) == sublevel_height:
+                                pairing = (Matrix(z)*(self.weight_vector
+                                           + self.degree_vector))[0,0]
+                                sublevel_temp2.add((tuple(z), sublevel_height,
+                                                    self.F_hat(k, tuple(z)),
+                                                    pairing))
+                    for u in lms_partition:
+                        if u[0][1] == sublevel_height:
+                            sublevel_temp2 = sublevel_temp2.union(set(u))
+                            break
+                    sublevels.append(sublevel_temp2)
 
-            return sublevels
+                return sublevels
 
-        else:
-            print("Only implemented for negative definite plumbings.")
+            else:
+                print("Only implemented for negative definite plumbing trees.")
+        except Exception as e:
+            print(e)
 
-    def bigraded_root(self, k, n):
+    def weighted_graded_root(self, k, n):
         """
         Given a characteristic vector k and a positive integer n, computes
-        the first n levels of the bigraded root.
+        the first n levels of the weighted graded root corresponding to the
+        admissible family :math:'\widehat{F}'. See [2]_ for details.
+
+        Parameters
+        ----------
+        k: list
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            in the plumbing. k should be a characteristic vector.
+
+        n: int
+            A positive integer.
+
+        Returns
+        -------
+        tuple
+            A tuple of the form (a, b) where a is a GraphPlot object
+            representing the weighted graded root and b is a list of the
+            two-variable weights of the vertices of the weighted graded root.
+
         """
-        if self.definiteness_type == "negative definite":
+        if self.definiteness_type == "negative definite" and self.is_tree:
             sublevels = self.chi_sublevels(k, n)
 
             k_squared = self.char_vector_properties(k)[2]
@@ -816,8 +901,8 @@ class Plumbing:
             h_index = 0
             v_index = 0
             h_index_dictionary = {}
-            Q.<q> = PuiseuxSeriesRing(QQ)
             T.<t> = LaurentPolynomialRing(QQ)
+            Q.<q> = PuiseuxSeriesRing(T)
             for x in connected_components:
                 for y in x:
                     two_vpoly = 0
@@ -873,116 +958,384 @@ class Plumbing:
             return bgr_plot, bgr_vertex_two_variable_weights
 
         else:
-            print("Not yet implemented for non-negative definite plumbings.")
+            print("Only implemented for negative definite plumbings trees.")
 
-    def zhat(self, a, n):
-        a = Matrix(a).T
-        M_inv = self.intersection_form.inverse()
-        min_level = ((a.T*M_inv*a)[0,0])/4
-        bounding_box = []
-        for i in range(0, self.vertex_count):
-            if min_level % 1 == 0:
-                x = 2*math.sqrt(-(self.weight_vector[i, 0])*(n-1))
-            else:
-                x = 2*math.sqrt(-(self.weight_vector[i, 0])*n)
-            bounding_box.append([-x, x])
+    def zhat_hat(self, s_rep, n, spinc_convention):
+        """
+        Computes
+        :math:'\widehat{\vphantom{\rule{5pt}{10pt}}\smash{\widehat{Z}}\,}\!'
+        for the first n levels. Note zhat_hat is only well-defined up to
+        multiplication by an overall power of t. There is a way to normalize the
+        t power to eliminate this t-ambiguity, however this function does not
+        do this. See [2]_ for more details.
 
-        F_supp = []
-        for i in range(0, self.vertex_count):
-            if self.degree_vector[i, 0] == 0:
-                if bounding_box[i][0]<= -2 and bounding_box[i][1]>= 2:
-                    F_supp.append([-2, 0, 2])
-                elif bounding_box[i][0]<= -2 and bounding_box[i][1]< 2:
-                    F_supp.append([-2, 0])
-                elif bounding_box[i][0]> -2 and bounding_box[i][1]>= 2:
-                    F_supp.append([0, 2])
+        Parameters
+        ----------
+        s_rep: list
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            in the plumbing.
+
+        n: int
+            A positive integer.
+
+        spinc_convention: int
+            Either 0 or 1. If 0, then the vector s_rep should be congruent to
+            the weight vector mod 2. If 1, then the vector s_rep should be
+            congruent to the degree vector mod 2. The spinc_conventions 0 and 1
+            correspond to conventions (2) and (3) respectively in section 2 of
+            [2]_ for representing spin^c structures.
+
+        Returns
+        -------
+        two-variable laurent polynomial:
+            A Laurent polynomial in q with coefficients in Laurent polynomials
+            in t (except with the q variable
+            possibly assuming powers shifted by some overall rational number).
+            If
+            .. math::
+                \widehat{\vphantom{\rule{5pt}{10pt}}\smash{\widehat{Z}}\,}\! =
+                p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots +
+                p_{n}(t)q^{\Delta + m+n-1} + \cdots
+            where
+            .. math::
+                m = \ceil{\min_{x\in \mathbb{R}^s}2\chi_{k}(x) + \langle x, u\rangle}
+
+            Then, the output of this function is
+            .. math::
+                p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots +
+                p_{n}(t)q^{\Delta + m+n-1}
+            Note, some :math:'p_{i}' coefficients may be zero, in which case
+            it may appear that there are less than n terms.
+        """
+        try:
+            if (not n.is_integer()) or n < 1:
+                raise Exception("Second parameter must be a postive integer.")
+            if (spinc_convention != 0) and (spinc_convention != 1):
+                raise Exception("Third parameter must be 0 or 1.")
+            s_rep = Matrix(s_rep).T
+            if spinc_convention == 0:
+                for i in range(0, self.vertex_count):
+                    if (float(s_rep[i,0])-float(self.weight_vector[i, 0])) % 2 != 0:
+                        raise Exception("Your selected spin^c convention is to\
+                                        use characteristic vectors, but second\
+                                        parameter is not characteristic.")
+                k = s_rep
+                a = s_rep - self.weight_vector - self.degree_vector
+            if spinc_convention == 1:
+                for i in range(0, self.vertex_count):
+                    if (float(s_rep[i,0])-float(self.degree_vector[i, 0])) % 2 != 0:
+                        raise Exception("Your selected spin^c convention is to\
+                                        use vectors congruent mod 2 to the\
+                                        degree vector, but second parameter\
+                                        does not satisfy this.")
+                k = s_rep + self.weight_vector + self.degree_vector
+                a = s_rep
+
+            k_squared = self.char_vector_properties(k.T)[2]
+
+            normalization_term = -(k_squared + 3*self.vertex_count
+                                   + sum(self.weight_vector)[0])/4\
+                                   + sum(k)[0]/2\
+                                   - sum(self.weight_vector + self.degree_vector)[0]/4
+            M = self.intersection_form
+            M_inv = M.inverse()
+
+            min_vector = -(1/2)*M_inv*a
+            min_level = ((a.T*M_inv*a)[0,0])/4
+
+            bounding_box = []
+            for i in range(0, self.vertex_count):
+                if min_level % 1 == 0:
+                    x = 2*math.sqrt(-(self.weight_vector[i, 0])*(n-1))
                 else:
-                    F_supp.append([0])
-            elif self.degree_vector[i, 0] == 1:
-                if bounding_box[i][0]<= -1 and bounding_box[i][1]>= 1:
-                    F_supp.append([-1, 1])
-                elif bounding_box[i][0]<= -1 and bounding_box[i][1]<1:
-                    F_supp.append([-1])
-                elif bounding_box[i][0]> -1 and bounding_box[i][1]>=1:
-                    F_supp.append([1])
-                else:
-                    return 0
-            elif self.degree_vector[i, 0] == 2:
-                F_supp.append([0])
-            else:
-                r = self.degree_vector[i, 0]-2
-                values = []
-                if bounding_box[i][0] <=-r:
-                    values.append(-r)
-                    for j in range(1, floor((-r-bounding_box[i][0])/2)+1):
-                        values.append(-r - 2*j)
-                if bounding_box[i][1] >=r:
-                    values.append(r)
-                    for j in range(1, floor((bounding_box[i][1]-r)/2)+1):
-                        values.append(r + 2*j)
-                if len(values)==0:
-                    return 0
-                F_supp.append(copy(values))
-        iterator = product(*F_supp)
+                    x = 2*math.sqrt(-(self.weight_vector[i, 0])*n)
+                bounding_box.append([-x, x])
 
-        def F_hat(y):
-            F = 1
+            F_supp = []
             for i in range(0, self.vertex_count):
                 if self.degree_vector[i, 0] == 0:
-                    if y[i, 0] == 0:
-                        F = -2*F
-                    elif y[i, 0] != 2 and y[i, 0]!= -2:
-                        F = 0
-                        return F
-                elif self.degree_vector[i, 0] == 1:
-                    if y[i, 0] == 1:
-                        F = -F
-                    elif y[i, 0] != -1:
-                        F = 0
-                        return F
-                elif self.degree_vector[i, 0] == 2:
-                    if y[i, 0] != 0:
-                        F = 0
-                        return F
-                else:
-                    if abs(y[i, 0]) >= self.degree_vector[i, 0]-2:
-                        F = F*(1/2)*sign(y[i,0])^(self.degree_vector[i, 0])
-                        F = F*binomial((self.degree_vector[i, 0]
-                                        + abs(y[i, 0]))/2-2,
-                                        self.degree_vector[i, 0] -3)
+                    if bounding_box[i][0]<= -2 and bounding_box[i][1]>= 2:
+                        F_supp.append([-2, 0, 2])
+                    elif bounding_box[i][0]<= -2 and bounding_box[i][1]< 2:
+                        F_supp.append([-2, 0])
+                    elif bounding_box[i][0]> -2 and bounding_box[i][1]>= 2:
+                        F_supp.append([0, 2])
                     else:
-                        F = 0
-                        return F
-            return F
+                        F_supp.append([0])
+                elif self.degree_vector[i, 0] == 1:
+                    if bounding_box[i][0]<= -1 and bounding_box[i][1]>= 1:
+                        F_supp.append([-1, 1])
+                    elif bounding_box[i][0]<= -1 and bounding_box[i][1]<1:
+                        F_supp.append([-1])
+                    elif bounding_box[i][0]> -1 and bounding_box[i][1]>=1:
+                        F_supp.append([1])
+                    else:
+                        return 0
+                elif self.degree_vector[i, 0] == 2:
+                    F_supp.append([0])
+                else:
+                    r = self.degree_vector[i, 0]-2
+                    values = []
+                    if bounding_box[i][0] <=-r:
+                        values.append(-r)
+                        for j in range(1, floor((-r-bounding_box[i][0])/2)+1):
+                            values.append(-r - 2*j)
+                    if bounding_box[i][1] >=r:
+                        values.append(r)
+                        for j in range(1, floor((bounding_box[i][1]-r)/2)+1):
+                            values.append(r + 2*j)
+                    if len(values)==0:
+                        return 0
+                    F_supp.append(copy(values))
+            iterator = product(*F_supp)
 
-        exponents = [ceil(min_level) + i for i in range(0, n)]
-        coefficients = n*[0]
+            def F_hat_pre_comp(y):
+                F = 1
+                for i in range(0, self.vertex_count):
+                    if self.degree_vector[i, 0] == 0:
+                        if y[i, 0] == 0:
+                            F = -2*F
+                        elif y[i, 0] != 2 and y[i, 0]!= -2:
+                            F = 0
+                            return F
+                    elif self.degree_vector[i, 0] == 1:
+                        if y[i, 0] == 1:
+                            F = -F
+                        elif y[i, 0] != -1:
+                            F = 0
+                            return F
+                    elif self.degree_vector[i, 0] == 2:
+                        if y[i, 0] != 0:
+                            F = 0
+                            return F
+                    else:
+                        if abs(y[i, 0]) >= self.degree_vector[i, 0]-2:
+                            F = F*(1/2)*sign(y[i,0])^(self.degree_vector[i, 0])
+                            F = F*binomial((self.degree_vector[i, 0]
+                                            + abs(y[i, 0]))/2-2,
+                                            self.degree_vector[i, 0] -3)
+                        else:
+                            F = 0
+                            return F
+                return F
 
-        for y in iterator:
-            y = Matrix(y).T
-            c = -((y.T*M_inv*y)[0,0])/4
-            if frac(min_level) == 0:
-                if c <= n-1:
-                    x = (1/2)*M_inv*(y-a)
-                    if x in MatrixSpace(ZZ, self.vertex_count, 1):
-                        ind = c
-                        coefficients[ind] = coefficients[ind] + F_hat(y)
-            else:
-                if c <= n:
-                    x = (1/2)*M_inv*(y-a)
-                    if x in MatrixSpace(ZZ, self.vertex_count, 1):
-                        ind = floor(c)
-                        coefficients[ind] = coefficients[ind] + F_hat(y)
+            exponents = [ceil(min_level) + i for i in range(0, n)]
+            coefficients = n*[0]
 
+            T.<t> = LaurentPolynomialRing(QQ)
+            Q.<q> = PuiseuxSeriesRing(T)
 
-        u = Matrix(self.vertex_count*[1])
-        normalization_term = -min_level -(3*self.vertex_count +
-                                         (u*self.weight_vector)[0,0])/4
-        zhat_list = [(coefficients[i], exponents[i] + normalization_term)
-                     for i in range(0, n)]
+            for y in iterator:
+                y = Matrix(y).T
+                c = -((y.T*M_inv*y)[0,0])/4
+                if frac(min_level) == 0:
+                    if c <= n-1:
+                        x = (1/2)*M_inv*(y-a)
+                        if x in MatrixSpace(ZZ, self.vertex_count, 1):
+                            ind = c
+                            t_exp = (x.T*(self.weight_vector + self.degree_vector))[0,0]
+                            coefficients[ind] = coefficients[ind] + F_hat_pre_comp(y)*t^(t_exp)
+                else:
+                    if c <= n:
+                        x = (1/2)*M_inv*(y-a)
+                        if x in MatrixSpace(ZZ, self.vertex_count, 1):
+                            ind = floor(c)
+                            t_exp = (x.T*(self.weight_vector + self.degree_vector))[0,0]
+                            coefficients[ind] = coefficients[ind] + F_hat_pre_comp(y)*t^(t_exp)
 
-        R.<q> = PuiseuxSeriesRing(QQ)
-        truncated_zhat = 0
-        for x in zhat_list:
-            truncated_zhat = truncated_zhat + x[0]*q^(x[1])
-        return truncated_zhat
+            zhat_hat_list = [(coefficients[i], exponents[i] + normalization_term) for i in range(0, n)]
+
+            truncated_zhat_hat = 0
+            for x in zhat_hat_list:
+                truncated_zhat_hat = truncated_zhat_hat + x[0]*q^(x[1])
+            return truncated_zhat_hat
+
+        except Exception as e:
+            print(e)
+
+    def zhat(self, s_rep, n, spinc_convention):
+        """
+        Computes
+        :math:'\widehat{Z}' for the first n levels. See [2]_ or [3]_ for more
+        details.
+
+        Parameters
+        ----------
+        s_rep: list
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            in the plumbing.
+
+        n: int
+            A positive integer.
+
+        spinc_convention: int
+            Either 0 or 1. If 0, then the vector s_rep should be congruent to
+            the weight vector mod 2. If 1, then the vector s_rep should be
+            congruent to the degree vector mod 2. The spinc_conventions 0 and 1
+            correspond to conventions (2) and (3) respectively in section 2 of
+            [2]_ for representing spin^c structures.
+
+        Returns
+        -------
+        Laurent polynomial:
+            A Laurent polynomial in q (except with the q variable
+            possibly assuming powers shifted by some overall rational number).
+            If
+            .. math::
+                \widehat{Z} =
+                a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots +
+                a_{n}q^{\Delta + m+n-1} + \cdots
+            where
+            .. math::
+                m = \ceil{\min_{x\in \mathbb{R}^s}2\chi_{k}(x) + \langle x, u\rangle}
+
+            Then, the output of this function is
+            .. math::
+                a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots +
+                a_{n}q^{\Delta + m+n-1}
+            Note, some :math:'a_{i}' coefficients may be zero, in which case
+            it may appear that there are less than n terms.
+        """
+        try:
+            if (not n.is_integer()) or n < 1:
+                raise Exception("Second parameter must be a postive integer.")
+            if (spinc_convention != 0) and (spinc_convention != 1):
+                raise Exception("Third parameter must be 0 or 1.")
+            s_rep = Matrix(s_rep).T
+            if spinc_convention == 0:
+                for i in range(0, self.vertex_count):
+                    if (float(s_rep[i,0])-float(self.weight_vector[i, 0])) % 2 != 0:
+                        raise Exception("Your selected spin^c convention is to\
+                                        use characteristic vectors, but second\
+                                        parameter is not characteristic.")
+                k = s_rep
+                a = s_rep - self.weight_vector - self.degree_vector
+            if spinc_convention == 1:
+                for i in range(0, self.vertex_count):
+                    if (float(s_rep[i,0])-float(self.degree_vector[i, 0])) % 2 != 0:
+                        raise Exception("Your selected spin^c convention is to\
+                                        use vectors congruent mod 2 to the\
+                                        degree vector, but second parameter\
+                                        does not satisfy this.")
+                k = s_rep + self.weight_vector + self.degree_vector
+                a = s_rep
+
+            k_squared = self.char_vector_properties(k.T)[2]
+
+            normalization_term = -(k_squared + 3*self.vertex_count
+                                   + sum(self.weight_vector)[0])/4\
+                                   + sum(k)[0]/2\
+                                   - sum(self.weight_vector + self.degree_vector)[0]/4
+            M = self.intersection_form
+            M_inv = M.inverse()
+
+            min_vector = -(1/2)*M_inv*a
+            min_level = ((a.T*M_inv*a)[0,0])/4
+
+            bounding_box = []
+            for i in range(0, self.vertex_count):
+                if min_level % 1 == 0:
+                    x = 2*math.sqrt(-(self.weight_vector[i, 0])*(n-1))
+                else:
+                    x = 2*math.sqrt(-(self.weight_vector[i, 0])*n)
+                bounding_box.append([-x, x])
+
+            F_supp = []
+            for i in range(0, self.vertex_count):
+                if self.degree_vector[i, 0] == 0:
+                    if bounding_box[i][0]<= -2 and bounding_box[i][1]>= 2:
+                        F_supp.append([-2, 0, 2])
+                    elif bounding_box[i][0]<= -2 and bounding_box[i][1]< 2:
+                        F_supp.append([-2, 0])
+                    elif bounding_box[i][0]> -2 and bounding_box[i][1]>= 2:
+                        F_supp.append([0, 2])
+                    else:
+                        F_supp.append([0])
+                elif self.degree_vector[i, 0] == 1:
+                    if bounding_box[i][0]<= -1 and bounding_box[i][1]>= 1:
+                        F_supp.append([-1, 1])
+                    elif bounding_box[i][0]<= -1 and bounding_box[i][1]<1:
+                        F_supp.append([-1])
+                    elif bounding_box[i][0]> -1 and bounding_box[i][1]>=1:
+                        F_supp.append([1])
+                    else:
+                        return 0
+                elif self.degree_vector[i, 0] == 2:
+                    F_supp.append([0])
+                else:
+                    r = self.degree_vector[i, 0]-2
+                    values = []
+                    if bounding_box[i][0] <=-r:
+                        values.append(-r)
+                        for j in range(1, floor((-r-bounding_box[i][0])/2)+1):
+                            values.append(-r - 2*j)
+                    if bounding_box[i][1] >=r:
+                        values.append(r)
+                        for j in range(1, floor((bounding_box[i][1]-r)/2)+1):
+                            values.append(r + 2*j)
+                    if len(values)==0:
+                        return 0
+                    F_supp.append(copy(values))
+            iterator = product(*F_supp)
+
+            def F_hat_pre_comp(y):
+                F = 1
+                for i in range(0, self.vertex_count):
+                    if self.degree_vector[i, 0] == 0:
+                        if y[i, 0] == 0:
+                            F = -2*F
+                        elif y[i, 0] != 2 and y[i, 0]!= -2:
+                            F = 0
+                            return F
+                    elif self.degree_vector[i, 0] == 1:
+                        if y[i, 0] == 1:
+                            F = -F
+                        elif y[i, 0] != -1:
+                            F = 0
+                            return F
+                    elif self.degree_vector[i, 0] == 2:
+                        if y[i, 0] != 0:
+                            F = 0
+                            return F
+                    else:
+                        if abs(y[i, 0]) >= self.degree_vector[i, 0]-2:
+                            F = F*(1/2)*sign(y[i,0])^(self.degree_vector[i, 0])
+                            F = F*binomial((self.degree_vector[i, 0]
+                                            + abs(y[i, 0]))/2-2,
+                                            self.degree_vector[i, 0] -3)
+                        else:
+                            F = 0
+                            return F
+                return F
+
+            exponents = [ceil(min_level) + i for i in range(0, n)]
+            coefficients = n*[0]
+
+            for y in iterator:
+                y = Matrix(y).T
+                c = -((y.T*M_inv*y)[0,0])/4
+                if frac(min_level) == 0:
+                    if c <= n-1:
+                        x = (1/2)*M_inv*(y-a)
+                        if x in MatrixSpace(ZZ, self.vertex_count, 1):
+                            ind = c
+                            coefficients[ind] = coefficients[ind] + F_hat_pre_comp(y)
+
+                else:
+                    if c <= n:
+                        x = (1/2)*M_inv*(y-a)
+                        if x in MatrixSpace(ZZ, self.vertex_count, 1):
+                            ind = floor(c)
+                            coefficients[ind] = coefficients[ind] + F_hat_pre_comp(y)
+
+            zhat_list = [(coefficients[i], exponents[i] + normalization_term) for i in range(0, n)]
+
+            R.<q> = PuiseuxSeriesRing(QQ)
+
+            truncated_zhat = 0
+            for x in zhat_list:
+                truncated_zhat = truncated_zhat + x[0]*q^(x[1])
+            return truncated_zhat
+
+        except Exception as e:
+            print(e)
