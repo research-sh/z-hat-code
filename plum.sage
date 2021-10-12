@@ -70,11 +70,8 @@ class Plumbing:
 
     Here P is the plumbing consisting of 4 vertices with weights
     -1, -2, -3, and -7 respectively. Vertices 0 and 1, 0 and 2, 0 and 3
-    are connected by edges. P = -2 ------- -1 ------- -3
-                                            |
-                                            |
-                                            |
-                                           -7
+    are connected by edges.
+
     """
 
 
