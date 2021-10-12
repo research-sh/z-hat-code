@@ -1,34 +1,16 @@
-"""A sage package for analyzing manifolds plumbed along 2-spheres.
+"""A sage module for analyzing manifolds plumbed along 2-spheres.
 
-This package enables the user to enter a plumbing diagram and return basic
+This module enables the user to enter a plumbing diagram and return basic
 information about the corresponding 3- and 4-dimensional manifolds,
 for example the intersection form, homology, etc.
 
 For negative definite plumbing trees equipped with a spin^c structure, the
-program can also compute the weighted_graded_root [2]_,
-:math:'\widehat{Z}' invariant [3]_, and the :math:'\widehat{\widehat{Z}}'
-invariant [2]_.
+program can also compute the weighted graded root :cite:p:`AJK`,
+:math:`\widehat{Z}` invariant :cite:p:`GPPV`, and the
+:math:`\widehat{\widehat{Z}}` invariant :cite:p:`AJK`.
 
-For more about plumbed manifolds see [4]_ and [5]_
-
-References
-----------
-.. [1] András Némethi, On the Ozsváth-Szabó invariant of negative definite
-       plumbed 3-manifolds, Geom. Topol. 9 (2005), 991–1042. MR 2140997
-.. [2] Rostislav Akhmechet, Peter K. Johnson, and Vyacheslav Krushkal,
-       Lattice cohomology and q- series invariants of 3-manifolds,
-       arXiv preprint arXiv:2109.14139 (2021).
-.. [3] Sergei Gukov, Du Pei, Pavel Putrov, and Cumrun Vafa, BPS spectra and
-       3-manifold invariants, J. Knot Theory Ramifications 29 (2020),
-       no. 2, 2040003, 85. MR 4089709
-.. [4] Robert E. Gompf and András I. Stipsicz, 4-manifolds and Kirby calculus,
-       Graduate Studies in Mathematics, vol. 20, American Mathematical Society,
-       Providence, RI, 1999. MR 1707327
-.. [5] Walter D. Neumann, A calculus for plumbing applied to the topology of
-       complex surface singularities and degenerating complex curves,
-       Trans. Amer. Math. Soc. 268 (1981), no. 2, 299–344. MR 632532
-.. [6] Peter Ozsváth and Zoltán Szabó, On the Floer homology of plumbed
-       three-manifolds, Geom. Topol. 7 (2003), 185–224. MR 1988284
+.. bibliography::
+   :all:
 
 """
 
@@ -246,8 +228,8 @@ class Plumbing:
         """tuple: A tuple of the form (x, comp_seq) where x is the Artin
         fundamental cycle of the plumbing and comp_seq is the associated
         computation sequence used to compute x. The Artin fundamental cycle is
-        used to determine the rationality of the plumbing graph. See [1]_ for
-        more details about the Artin fundamental cycle.
+        used to determine the rationality of the plumbing graph. See
+        :cite:p:`Nem_On_the` for more details about the Artin fundamental cycle.
         """
         if self._artin_fcycle is None and self.definiteness_type ==\
                 "negative definite" and self.is_tree:
@@ -374,8 +356,8 @@ class Plumbing:
         ----------
         test_threshold: int
             A non-negative integer which is the amount by
-            which framings are decreased to test for rationality. See [1]_
-            for the definition of almost rational.
+            which framings are decreased to test for rationality. See
+            :cite:p:`Nem_On_the` for the definition of almost rational.
 
         Returns
         -------
@@ -626,7 +608,7 @@ class Plumbing:
     def F_hat(self, k, x):
         """
         Given a vector k and a lattice element x, computes
-        :math: '\widehat{F}_{\Gamma, k}(x)'. See [2]_ for more details.
+        :math: `\widehat{F}_{\Gamma, k}(x)`. See :cite:p:`AJK` for more details.
 
         Parameters
         ----------
@@ -640,7 +622,7 @@ class Plumbing:
         Returns
         -------
         int
-            The value :math: '\widehat{F}_{\Gamma, k}(x)'
+            The value :math: `\widehat{F}_{\Gamma, k}(x)`
 
         """
         k = Matrix(k).T
@@ -826,7 +808,7 @@ class Plumbing:
         """
         Given a characteristic vector k and a positive integer n, computes
         the first n levels of the weighted graded root corresponding to the
-        admissible family :math:'\widehat{F}'. See [2]_ for details.
+        admissible family :math:`\widehat{F}`. See :cite:p:`AJK` for details.
 
         Parameters
         ----------
@@ -958,12 +940,11 @@ class Plumbing:
 
     def zhat_hat(self, s_rep, n, spinc_convention):
         """
-        Computes
-        :math:'\widehat{\vphantom{\rule{5pt}{10pt}}\smash{\widehat{Z}}\,}\!'
-        for the first n levels. Note zhat_hat is only well-defined up to
-        multiplication by an overall power of t. There is a way to normalize the
-        t power to eliminate this t-ambiguity, however this function does not
-        do this. See [2]_ for more details.
+        Computes :math:`\widehat{\widehat{Z}}` for the first n levels. Note
+        zhat_hat is only well-defined up to multiplication by an overall power
+        of t. There is a way to normalize the t power to eliminate this
+        t-ambiguity, however this function does not do this.
+        See :cite:p:`AJK` for more details.
 
         Parameters
         ----------
@@ -979,7 +960,7 @@ class Plumbing:
             the weight vector mod 2. If 1, then the vector s_rep should be
             congruent to the degree vector mod 2. The spinc_conventions 0 and 1
             correspond to conventions (2) and (3) respectively in section 2 of
-            [2]_ for representing spin^c structures.
+            :cite:p:`AJK` for representing spin^c structures.
 
         Returns
         -------
@@ -989,18 +970,15 @@ class Plumbing:
             possibly assuming powers shifted by some overall rational number).
             If
             .. math::
-                \widehat{\vphantom{\rule{5pt}{10pt}}\smash{\widehat{Z}}\,}\! =
-                p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots +
-                p_{n}(t)q^{\Delta + m+n-1} + \cdots
+                \widehat{\widehat{Z}} = p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots + p_{n}(t)q^{\Delta + m+n-1} + \cdots
             where
             .. math::
                 m = \ceil{\min_{x\in \mathbb{R}^s}2\chi_{k}(x) + \langle x, u\rangle}
 
             Then, the output of this function is
             .. math::
-                p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots +
-                p_{n}(t)q^{\Delta + m+n-1}
-            Note, some :math:'p_{i}' coefficients may be zero, in which case
+                p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots + p_{n}(t)q^{\Delta + m+n-1}
+            Note, some :math:`p_{i}` coefficients may be zero, in which case
             it may appear that there are less than n terms.
         """
         try:
@@ -1151,9 +1129,8 @@ class Plumbing:
 
     def zhat(self, s_rep, n, spinc_convention):
         """
-        Computes
-        :math:'\widehat{Z}' for the first n levels. See [2]_ or [3]_ for more
-        details.
+        Computes :math:`\widehat{Z}` for the first n levels. See :cite:p:`AJK`
+        or :cite:p:`GPPV` for more details.
 
         Parameters
         ----------
@@ -1169,7 +1146,7 @@ class Plumbing:
             the weight vector mod 2. If 1, then the vector s_rep should be
             congruent to the degree vector mod 2. The spinc_conventions 0 and 1
             correspond to conventions (2) and (3) respectively in section 2 of
-            [2]_ for representing spin^c structures.
+            :cite:p:`AJK` for representing spin^c structures.
 
         Returns
         -------
@@ -1178,18 +1155,15 @@ class Plumbing:
             possibly assuming powers shifted by some overall rational number).
             If
             .. math::
-                \widehat{Z} =
-                a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots +
-                a_{n}q^{\Delta + m+n-1} + \cdots
+                \widehat{Z} = a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots + a_{n}q^{\Delta + m+n-1} + \cdots
             where
             .. math::
                 m = \ceil{\min_{x\in \mathbb{R}^s}2\chi_{k}(x) + \langle x, u\rangle}
 
             Then, the output of this function is
             .. math::
-                a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots +
-                a_{n}q^{\Delta + m+n-1}
-            Note, some :math:'a_{i}' coefficients may be zero, in which case
+                a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots + a_{n}q^{\Delta + m+n-1}
+            Note, some :math:`a_{i}` coefficients may be zero, in which case
             it may appear that there are less than n terms.
         """
         try:
