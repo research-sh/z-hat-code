@@ -14,6 +14,13 @@ program can also compute the weighted graded root :cite:p:`AJK`,
 
 """
 
+#*****************************************************************************
+#  Copyright (C) 2021 Peter K. Johnson <pkj4vj@virginia.edu>
+#
+#  Distributed under the terms of the GNU General Public License (GNU GPLv3)
+#                  http://www.gnu.org/licenses/
+#*****************************************************************************
+
 from copy import copy, deepcopy
 from itertools import product, groupby
 
