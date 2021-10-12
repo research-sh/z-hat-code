@@ -5,9 +5,9 @@ information about the corresponding 3- and 4-dimensional manifolds,
 for example the intersection form, homology, etc.
 
 For negative definite plumbing trees equipped with a spin^c structure, the
-program can also compute the graded root [1]_, weighted_graded_root [2]_,
+program can also compute the weighted_graded_root [2]_,
 :math:'\widehat{Z}' invariant [3]_, and the
-:math:'\widehat{\vphantom{\rule{5pt}{10pt}}\smash{\widehat{Z}}\,}\!'
+:math:'\widehat{\widehat{Z}}'
 invariant [2]_.
 
 For more about plumbed manifolds see [4]_ and [5]_
