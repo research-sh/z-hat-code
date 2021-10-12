@@ -975,17 +975,14 @@ class Plumbing:
             A Laurent polynomial in q with coefficients in Laurent polynomials
             in t (except with the q variable
             possibly assuming powers shifted by some overall rational number).
-            If
-            .. math::
-                \widehat{\widehat{Z}} = p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots + p_{n}(t)q^{\Delta + m+n-1} + \cdots
-            where
-            .. math::
-                m = \ceil{\min_{x\in \mathbb{R}^s}2\chi_{k}(x) + \langle x, u\rangle}
+            If :math:`\widehat{\widehat{Z}} = p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots + p_{n}(t)q^{\Delta + m+n-1} + \cdots`
+
+            where m is the minimum of :math:`\chi_{k}` over the lattice.
 
             Then, the output of this function is
-            .. math::
-                p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots + p_{n}(t)q^{\Delta + m+n-1}
-            Note, some :math:`p_{i}` coefficients may be zero, in which case
+            :math:`p_{1}(t)q^{\Delta + m} + p_{2}(t)q^{\Delta + m +1} + \cdots + p_{n}(t)q^{\Delta + m+n-1}`
+
+            Note, some :math:`p_{i}(t)` coefficients may be zero, in which case
             it may appear that there are less than n terms.
         """
         try:
@@ -1160,16 +1157,13 @@ class Plumbing:
         Laurent polynomial:
             A Laurent polynomial in q (except with the q variable
             possibly assuming powers shifted by some overall rational number).
-            If
-            .. math::
-                \widehat{Z} = a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots + a_{n}q^{\Delta + m+n-1} + \cdots
-            where
-            .. math::
-                m = \ceil{\min_{x\in \mathbb{R}^s}2\chi_{k}(x) + \langle x, u\rangle}
+            If :math:`\widehat{Z} = a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots + a_{n}q^{\Delta + m+n-1} + \cdots`
+
+            where m is the minimum of :math:`\chi_{k}` over the lattice.
 
             Then, the output of this function is
-            .. math::
-                a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots + a_{n}q^{\Delta + m+n-1}
+            :math:`a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots + a_{n}q^{\Delta + m+n-1}`
+
             Note, some :math:`a_{i}` coefficients may be zero, in which case
             it may appear that there are less than n terms.
         """
