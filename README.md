@@ -5,8 +5,9 @@ To use:
 
 0. You will need [sagemath](https://www.sagemath.org/) installed.
 
-1. Download the file plum.sage. You do not need to download plum.py. That file
-is only used for generate sphinx documentation.
+1. Download the file plum.sage from the latest
+[release](https://github.com/peterkj1/plum/releases/tag/v1.0). You do not need
+to download plum.py. That file is only used for generating sphinx documentation.
 
 2. Open sage and type: `load('replace this with the file path of plum.sage')`
 
@@ -21,4 +22,4 @@ is the plumbing consisting of 4 vertices {0,1,2,3} with weights
 are connected by edges.
 
 
-For more details, see the documentation.
+For more details, see the [documentation](https://peterkj1.github.io/plum/index.html).
