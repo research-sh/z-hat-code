@@ -1,9 +1,12 @@
 # plum
 A sage package for analyzing plumbed manifolds.
 
-To use: 
+To use:
 
-1. Download the file plum.sage
+0. You will need [sagemath](https://www.sagemath.org/) installed.
+
+1. Download the file plum.sage.
+
 2. Open sage and type: `load('replace this with the file path of plum.sage')`
 
 For example, if the path is user/downloads/plum.sage, you would type: `load('user/downloads/plum.sage')`
@@ -15,4 +18,3 @@ For example, if the path is user/downloads/plum.sage, you would type: `load('use
 - get the intersection form of P, type: `P.interesection_form`
 - compute the first n levels of zhat for a spinc representative a (using GM notation and represented as a list), type: `P.zhat(a, n)`
 - compute the first n levels of the bigraded root for a spinc representative k (using Nemethi notation and represented as a list), type: `P.bigraded_root(k, n)`
- 
