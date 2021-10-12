@@ -6,8 +6,7 @@ for example the intersection form, homology, etc.
 
 For negative definite plumbing trees equipped with a spin^c structure, the
 program can also compute the weighted_graded_root [2]_,
-:math:'\widehat{Z}' invariant [3]_, and the
-:math:'\widehat{\widehat{Z}}'
+:math:'\widehat{Z}' invariant [3]_, and the :math:'\widehat{\widehat{Z}}'
 invariant [2]_.
 
 For more about plumbed manifolds see [4]_ and [5]_
