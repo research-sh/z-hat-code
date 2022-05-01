@@ -842,8 +842,8 @@ class Plumbing:
             for element in sublevels[0]:
                 break
             min_chi_level = element[1]
-            d_inv = -2*(min_chi_level) + self.vertex_count/4\
-                    + k_squared/4
+            d_inv = 2*(min_chi_level) -self.vertex_count/4\
+                    -k_squared/4
             normalization_term = -(k_squared + 3*self.vertex_count
                                    + sum(self.weight_vector)[0])/4 + sum(k)/2\
                                    - sum(self.weight_vector + self.degree_vector)[0]/4
