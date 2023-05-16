@@ -253,7 +253,7 @@ class Plumbing:
         """Matrix: A matrix representing the intersection form of the
         plumbing."""
         if self._intersection_form is None:
-            intersection_form = self._graph.adjacency_matrix()
+            intersection_form = self._graph.adjacency_matrix(vertices=self._vertex_list)
             for i in range(0, self._vertex_count):
                 intersection_form[i, i] = self._weight_vector[i,0]
             self._intersection_form = intersection_form
@@ -354,24 +354,24 @@ class Plumbing:
         used to determine the rationality of the plumbing graph. See
         :cite:p:`Nem_On_the` for more details about the Artin fundamental cycle.
         """
-        if self._artin_fcycle is None and self.definiteness_type ==\
-                "negative definite" and self.is_tree:
-            x = [0] * self.vertex_count
-            x[0] = 1
-            x = Matrix(x)
-            z = x*self.intersection_form
-            comp_seq = [deepcopy(x)]
-            while any(i > 0 for i in z.row(0)):
-                j = 0
-                while z[0,j] <= 0:
-                    j = j + 1
-                x[0,j] = x[0,j] + 1
-                comp_seq.append(deepcopy(x))
-                z = x * self.intersection_form
-            self._artin_fcycle = x, comp_seq
-        else:
-            self._artin_fcycle = "Not applicable; plumbing is not a negative\
-                                  definite tree."
+        if self._artin_fcycle is None:
+            if self.definiteness_type == "negative definite" and self.is_tree:
+                x = [0] * self.vertex_count
+                x[0] = 1
+                x = Matrix(x)
+                z = x*self.intersection_form
+                comp_seq = [deepcopy(x)]
+                while any(i > 0 for i in z.row(0)):
+                    j = 0
+                    while z[0,j] <= 0:
+                        j = j + 1
+                    x[0,j] = x[0,j] + 1
+                    comp_seq.append(deepcopy(x))
+                    z = x * self.intersection_form
+                self._artin_fcycle = x, comp_seq
+            else:
+                self._artin_fcycle = "Not applicable; plumbing is not a negative\
+                                          definite tree."  
         return self._artin_fcycle
 
     @property
@@ -381,8 +381,9 @@ class Plumbing:
         """
         if self._is_weakly_elliptic is None:
             if self.is_tree and self.definiteness_type == "negative definite":
-                k = [-i-2 for i in self._graph.vs["v_weights"]]
-                k = Matrix(k)
+                k = -self.weight_vector.T
+                for i in range(0, self.vertex_count):
+                    k[0,i] = k[0,i]-2
                 m = -(k * self.artin_fcycle[0].T
                       + self.artin_fcycle[0]
                       * self.intersection_form
@@ -402,8 +403,9 @@ class Plumbing:
         """bool: True if the plumbing is rational, False or N/A otherwise."""
         if self._is_rational is None:
             if self.is_tree and self.definiteness_type == "negative definite":
-                k = [-i-2 for i in self._graph.vs["v_weights"]]
-                k = Matrix(k)
+                k = -self.weight_vector.T
+                for i in range(0, self.vertex_count):
+                    k[0,i] = k[0,i]-2
                 m = -(k * self.artin_fcycle[0].T
                       + self.artin_fcycle[0]
                       * self.intersection_form
@@ -421,9 +423,10 @@ class Plumbing:
     @property
     def homology(self):
         """tuple: A tuple of the form (homology_group, homology_generators,
-        rank) where homology_group is the first homology of the plumbed
+        rank, invariant_factors) where homology_group is the first homology of the plumbed
         3-manifold, homology generators are the corresponding generators of
-        homology_group, and rank is the Z-rank of the homology.
+        homology_group, and rank is the Z-rank of the homology, and invariant_factors
+        are the orders of the corresponding generators.
         """
         if self._homology is None:
             smith = self.intersection_smith_form
@@ -468,8 +471,7 @@ class Plumbing:
                                      + str(invariant_factors[i]) + "}"
                     homology_generators.append(finite_ord_coker_gens[i])
 
-            self._homology = homology_group, homology_generators, rank
-
+            self._homology = homology_group, homology_generators, rank, invariant_factors
         return self._homology
 
     def is_almost_rational(self, test_threshold):
@@ -1487,3 +1489,4 @@ class Plumbing:
 
         except Exception as e:
             print(e)
+            
