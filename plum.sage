@@ -1687,7 +1687,8 @@ def z_hat_exponents(self, s_rep, n, spinc_convention, A = None):
             truncated_zhat = 0
             for x in zhat_list:
                 truncated_zhat = truncated_zhat + x[0]*q^(x[1])
-                zhat_exponents.append(x[1])
+                if (x[0] != 0):
+                    zhat_exponents.append(x[1])
             return zhat_exponents
 
         except Exception as e:
