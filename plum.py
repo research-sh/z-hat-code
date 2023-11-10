@@ -1480,5 +1480,207 @@ class Plumbing:
 
         except Exception as e:
             print(e)
-            
+
+def z_hat_exponents(self, s_rep, n, spinc_convention, A = None):
+        """
+        Computes the generalized :math:`\widehat{Z}` for the first n levels with
+        respect to some admissible family A. If no admissible family A is
+        specified then, it computes the usual zhat with respect to the
+        admissible family :math:`\widehat{F}`. See :cite:p:`AJK`
+        or :cite:p:`GPPV` for more details.
+
+        Parameters
+        ----------
+        s_rep: list
+            A list of integers [x_1, ..., x_s] where s is the number of vertices
+            in the plumbing.
+
+        n: int
+            A positive integer.
+
+        spinc_convention: int
+            Either 0 or 1. If 0, then the vector s_rep should be congruent to
+            the weight vector mod 2. If 1, then the vector s_rep should be
+            congruent to the degree vector mod 2. The spinc_conventions 0 and 1
+            correspond to conventions (2) and (3) respectively in section 2 of
+            :cite:p:`AJK` for representing spin^c structures.
+
+        A: AdmissibleFamily
+            An AdmissibleFamily object.
+
+        Returns
+        -------
+        Laurent polynomial:
+            A Laurent polynomial in q (except with the q variable
+            possibly assuming powers shifted by some overall rational number).
+            If :math:`\widehat{Z} = a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots + a_{n}q^{\Delta + m+n-1} + \cdots`
+
+            where m is the minimum of :math:`\chi_{k}` over the lattice, then
+            the output of this function is
+            :math:`a_{1}q^{\Delta + m} + a_{2}q^{\Delta + m +1} + \cdots + a_{n}q^{\Delta + m+n-1}`
+
+            Note, some :math:`a_{i}` coefficients may be zero, in which case
+            it may appear that there are less than n terms.
+        """
+        try:
+            if (not n.is_integer()) or n < 1:
+                raise Exception("Second parameter must be a postive integer.")
+            if A is not None and A.length < self.max_degree:
+                raise Exception("Admissible family does not contain enough"
+                                " information. Please use an admissible family"
+                                " that of length at least the max degree.")
+            if (spinc_convention != 0) and (spinc_convention != 1):
+                raise Exception("Third parameter must be 0 or 1.")
+            s_rep = Matrix(s_rep).T
+            if spinc_convention == 0:
+                for i in range(0, self.vertex_count):
+                    if (float(s_rep[i,0])-float(self.weight_vector[i, 0])) % 2 != 0:
+                        raise Exception("Your selected spin^c convention is to"
+                                        " use characteristic vectors, but"
+                                        " second parameter is not"
+                                        "characteristic.")
+                k = s_rep
+                a = s_rep - self.weight_vector - self.degree_vector
+            if spinc_convention == 1:
+                for i in range(0, self.vertex_count):
+                    if (float(s_rep[i,0])-float(self.degree_vector[i, 0])) % 2 != 0:
+                        raise Exception("Your selected spin^c convention is to"
+                                        " use vectors congruent mod 2 to the"
+                                        " degree vector, but second parameter"
+                                        " does not satisfy this.")
+                k = s_rep + self.weight_vector + self.degree_vector
+                a = s_rep
+
+            k_squared = self.char_vector_properties(k.T)[2]
+
+            normalization_term = -(k_squared + 3*self.vertex_count
+                                   + sum(self.weight_vector)[0])/4\
+                                   + sum(k)[0]/2\
+                                   - sum(self.weight_vector + self.degree_vector)[0]/4
+            M = self.intersection_form
+            M_inv = M.inverse()
+
+            min_vector = -(1/2)*M_inv*a
+            min_level = ((a.T*M_inv*a)[0,0])/4
+
+            bounding_box = []
+            for i in range(0, self.vertex_count):
+                if min_level % 1 == 0:
+                    x = 2*math.sqrt(-(self.weight_vector[i, 0])*(n-1))
+                else:
+                    x = 2*math.sqrt(-(self.weight_vector[i, 0])*n)
+                bounding_box.append([-x, x])
+
+            F_supp = []
+            for i in range(0, self.vertex_count):
+                if self.degree_vector[i, 0] == 0:
+                    if bounding_box[i][0]<= -2 and bounding_box[i][1]>= 2:
+                        F_supp.append([-2, 0, 2])
+                    elif bounding_box[i][0]<= -2 and bounding_box[i][1]< 2:
+                        F_supp.append([-2, 0])
+                    elif bounding_box[i][0]> -2 and bounding_box[i][1]>= 2:
+                        F_supp.append([0, 2])
+                    else:
+                        F_supp.append([0])
+                elif self.degree_vector[i, 0] == 1:
+                    if bounding_box[i][0]<= -1 and bounding_box[i][1]>= 1:
+                        F_supp.append([-1, 1])
+                    elif bounding_box[i][0]<= -1 and bounding_box[i][1]<1:
+                        F_supp.append([-1])
+                    elif bounding_box[i][0]> -1 and bounding_box[i][1]>=1:
+                        F_supp.append([1])
+                    else:
+                        return 0
+                elif self.degree_vector[i, 0] == 2:
+                    F_supp.append([0])
+                else:
+                    r = self.degree_vector[i, 0]-2
+                    values = []
+                    if A is not None:
+                        for g in range(0, floor(bounding_box[i][1])+1):
+                            if A.evaluation(r+2, g) != 0:
+                                values.append(g)
+                            if A.evaluation(r+2, -g) != 0:
+                                values.append(-g)
+                        values.sort()
+                    else:
+                        if bounding_box[i][0] <=-r:
+                            values.append(-r)
+                            for j in range(1, floor((-r-bounding_box[i][0])/2)+1):
+                                values.append(-r - 2*j)
+                        if bounding_box[i][1] >=r:
+                            values.append(r)
+                            for j in range(1, floor((bounding_box[i][1]-r)/2)+1):
+                                values.append(r + 2*j)
+                        if len(values)==0:
+                            return 0
+                    F_supp.append(copy(values))
+            iterator = product(*F_supp)
+
+            def F_hat_pre_comp(y):
+                F = 1
+                for i in range(0, self.vertex_count):
+                    if self.degree_vector[i, 0] == 0:
+                        if y[i, 0] == 0:
+                            F = -2*F
+                        elif y[i, 0] != 2 and y[i, 0]!= -2:
+                            F = 0
+                            return F
+                    elif self.degree_vector[i, 0] == 1:
+                        if y[i, 0] == 1:
+                            F = -F
+                        elif y[i, 0] != -1:
+                            F = 0
+                            return F
+                    elif self.degree_vector[i, 0] == 2:
+                        if y[i, 0] != 0:
+                            F = 0
+                            return F
+                    else:
+                        if A is not None:
+                            F = F*A.evaluation(self.degree_vector[i,0], y[i,0])
+                        else:
+                            if abs(y[i, 0]) >= self.degree_vector[i, 0]-2:
+                                F = F*(1/2)*sign(y[i,0])^(self.degree_vector[i, 0])
+                                F = F*binomial((self.degree_vector[i, 0]
+                                                + abs(y[i, 0]))/2-2,
+                                                self.degree_vector[i, 0] -3)
+                            else:
+                                F = 0
+                                return F
+                return F
+
+            exponents = [ceil(min_level) + i for i in range(0, n)]
+            coefficients = n*[0]
+
+            for y in iterator:
+                y = Matrix(y).T
+                c = -((y.T*M_inv*y)[0,0])/4
+                if frac(min_level) == 0:
+                    if c <= n-1:
+                        x = (1/2)*M_inv*(y-a)
+                        if x in MatrixSpace(ZZ, self.vertex_count, 1):
+                            ind = c
+                            coefficients[ind] = coefficients[ind] + F_hat_pre_comp(y)
+
+                else:
+                    if c <= n:
+                        x = (1/2)*M_inv*(y-a)
+                        if x in MatrixSpace(ZZ, self.vertex_count, 1):
+                            ind = floor(c)
+                            coefficients[ind] = coefficients[ind] + F_hat_pre_comp(y)
+
+            zhat_list = [(coefficients[i], exponents[i] + normalization_term) for i in range(0, n)]
+            zhat_exponents = []
+
+            R.<q> = PuiseuxSeriesRing(QQ)
+
+            truncated_zhat = 0
+            for x in zhat_list:
+                truncated_zhat = truncated_zhat + x[0]*q^(x[1])
+                zhat_exponents.append(x[1])
+            return zhat_exponents
+
+        except Exception as e:
+            print(e)
 
